@@ -1,0 +1,50 @@
+---
+title: "FB_Water_Qaulity_Monitoring"
+author: "Wendel Raymond"
+date: "August 19, 2021"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+# False Bay Watershed Water Quality Monitoring
+
+```{r echo=FALSE}
+library(tidyverse)
+library(ggplot2)
+
+theme_set(theme_classic())
+```
+
+## Data
+Load raw water quality data
+```{r}
+qual <- read.csv("../Data/FBWS_water_quality_monitoring.csv", header = TRUE, stringsAsFactors = FALSE)
+```
+
+Data management
+```{r echo=FALSE}
+qual$sample_date <- as.POSIXct(qual$sample_date, format = "%m/%d/%Y")
+```
+
+## Sample Locations
+![](../Data/FB_monitoring plan_v2.png)
+
+## Trends
+
+Temperature
+```{r echo=FALSE}
+ggplot(qual) +
+  geom_point(aes(x = sample_date, y = temp_c, color = station_id), size = 1.75) +
+  scale_color_brewer(palette = "Set1") +
+  scale_y_continuous(limits = c(10, 25), breaks = seq(10, 25, by = 2))
+```
+
+Dissolved oxygen
+```{r echo=FALSE}
+ggplot(qual) +
+  geom_point(aes(x = sample_date, y = DO_mgL, color = station_id), size = 1.75) +
+  scale_color_brewer(palette = "Set1")  +
+  scale_y_continuous(limits = c(0, 18), breaks = seq(0, 18, by = 2))
+```
+
