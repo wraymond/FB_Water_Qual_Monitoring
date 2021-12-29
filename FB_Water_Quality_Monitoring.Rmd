@@ -7,44 +7,212 @@ editor_options:
   chunk_output_type: console
 ---
 
-# False Bay Watershed Water Quality Monitoring
+## False Bay Watershed Water Quality Monitoring
 
 ```{r echo=FALSE}
 library(tidyverse)
 library(ggplot2)
+library(rnoaa)
+options(noaakey = "tDzKKwcWqlZFAcwgjTanQIpnFLZvAAET")
+library(lubridate)
 
 theme_set(theme_classic())
 ```
 
-## Data
-Load raw water quality data
+### Data
+#### Monitoring data
+Load raw water quality and nutrient data
 ```{r}
 qual <- read.csv("../Data/FBWS_water_quality_monitoring.csv", header = TRUE, stringsAsFactors = FALSE)
+nuts <- read.csv("../Data/FBWS_water_nutrients.csv", header = TRUE, stringsAsFactors = FALSE)
 ```
 
-Data management
+##### Data management
+
+Define data data as POSIXct data
 ```{r echo=FALSE}
 qual$sample_date <- as.POSIXct(qual$sample_date, format = "%m/%d/%Y")
+nuts$sample_date <- as.POSIXct(nuts$sample_date, format = "%m/%d/%Y")
 ```
+
+Combine nutrient with TN and TP data for a given date and station. Bring along/keep stations where only TNP are collected.
+```{r}
+nuts.nut <- nuts %>% 
+  filter(PO4_umol > 0)
+
+nuts.tnp <- nuts %>% 
+  filter(TP_umol > 0)
+
+nuts.comb <- merge(nuts.nut[, 1:11], nuts.tnp[, c(2, 3, 4, 12, 13)], by = c("sample_date", "station_name"), all.y = TRUE)
+```
+
+Compute mean TNP and nutrient values for a given date and station. This will produce a single nutrient and tnp values for each unique date and station combination.
+```{r}
+nuts.mean <- nuts.comb %>% 
+  group_by(station_name, sample_date) %>% 
+  summarise(PO4_umol = mean(PO4_umol),
+            SiOH4_umol = mean(SiOH4_umol),
+            NO3_umol = mean(NO3_umol),
+            NO2_umol = mean(NO2_umol),
+            NH4_umol = mean(NH4_umol),
+            TP_umol = mean(TP_umol),
+            TN_umol = mean(TN_umol))
+```
+
+Merge nutrients data with water quanlity data.
+```{r}
+dat <- merge(qual[, 1:11], nuts.mean, by = c("station_name", "sample_date"), all.x = TRUE)
+```
+
+#### Friday Harbor Airport data
+
+Read data pulled from NOAA
+```{r}
+fh <- read.csv("../Data/FH_Airport_1.2000_11.2021.csv", header = TRUE, stringsAsFactors = FALSE)
+```
+
+##### Data managemnt
+Define date as POSIXct and spread to create day month year columns
+```{r}
+fh$DATE <- as.POSIXct(fh$DATE, format = "%Y-%m-%d")
+fh <- fh %>% 
+  mutate(month = format(DATE, "%m"), year = format(DATE, "%Y"), day = format(DATE, "%d"))
+```
+
+Compute monthly total precipitation and mean daily temperature
+```{r}
+fh.monthly <- fh %>% 
+  group_by(year, month) %>% 
+  summarise(total.precip = sum(PRCP, na.rm = TRUE),
+            mean.tmax = mean(TMAX, na.rm = TRUE),
+            mean.tmin = mean(TMIN, na.rm = TRUE)) %>% 
+  mutate(date = make_date(year, month)) %>% 
+  mutate(date = as.POSIXct(date, format = "%Y-%m-%d"))
+```
+
 
 ## Sample Locations
 ![](../Data/FB_monitoring plan_v2.png)
 
-## Trends
+### Trends
 
 Temperature
 ```{r echo=FALSE}
-ggplot(qual) +
-  geom_point(aes(x = sample_date, y = temp_c, color = station_id), size = 1.75) +
-  scale_color_brewer(palette = "Set1") +
-  scale_y_continuous(limits = c(10, 25), breaks = seq(10, 25, by = 2))
+ggplot(dat) +
+  geom_point(aes(x = sample_date, y = temp_c), size = 1.75) +
+  scale_y_continuous(limits = c(5, 25), breaks = seq(5, 25, by = 5)) +
+  scale_x_datetime(date_breaks = "month", date_labels = "%m") +
+  ylab("Temperature (C)") +
+  xlab("Sample month") +
+  facet_wrap(~station_id)
 ```
 
 Dissolved oxygen
 ```{r echo=FALSE}
-ggplot(qual) +
-  geom_point(aes(x = sample_date, y = DO_mgL, color = station_id), size = 1.75) +
-  scale_color_brewer(palette = "Set1")  +
-  scale_y_continuous(limits = c(0, 18), breaks = seq(0, 18, by = 2))
+ggplot(dat) +
+  geom_point(aes(x = sample_date, y = DO_mgL), size = 1.75) +
+  scale_y_continuous(limits = c(0, 18), breaks = seq(0, 18, by = 4))  +
+  scale_x_datetime(date_breaks = "month", date_labels = "%m") +
+  ylab("DO (mg/l)") +
+  xlab("Sample month") +
+  facet_wrap(~station_id)
+```
+
+Salinity
+```{r}
+ggplot(dat) +
+  geom_point(aes(x = sample_date, y = sal_ppt), size = 1.75) +
+  scale_y_continuous(limits = c(0, 34), breaks = seq(0, 32, by = 4))  +
+  scale_x_datetime(date_breaks = "month", date_labels = "%m") +
+  ylab("Salinity (ppt)") +
+  xlab("Sample month") +
+  facet_wrap(~station_id)
+```
+
+Total Phosphorus
+```{r}
+ggplot(dat) +
+  geom_point(aes(x = sample_date, y = TP_umol), size = 1.75) +
+  scale_y_continuous(limits = c(0, 46), breaks = seq(0, 45, by = 15))  +
+  scale_x_datetime(date_breaks = "month", date_labels = "%m") +
+  ylab("Total P (umol)") +
+  xlab("Sample month") +
+  facet_wrap(~station_id)
+```
+
+Total Nitrogen
+```{r}
+ggplot(dat) +
+  geom_point(aes(x = sample_date, y = TN_umol), size = 1.75) +
+  scale_y_continuous(limits = c(0, 610), breaks = seq(0, 600, by = 100))  +
+  scale_x_datetime(date_breaks = "month", date_labels = "%m") +
+  ylab("Total N (umol)") +
+  xlab("Sample month") +
+  facet_wrap(~station_id)
+```
+
+Phosphate
+```{r}
+ggplot(dat %>% filter(station_id == "FBWS_1" | station_id == "FBWS_2")) +
+  geom_point(aes(x = sample_date, y = PO4_umol), size = 1.75) +
+  scale_y_continuous(limits = c(0, 25), breaks = seq(0, 25, by = 5))  +
+  scale_x_datetime(date_breaks = "month", date_labels = "%m") +
+  ylab("Phosphate (umol)") +
+  xlab("Sample month") +
+  facet_wrap(~station_id)
+```
+
+Nitrate
+```{r}
+ggplot(dat %>% filter(station_id == "FBWS_1" | station_id == "FBWS_2")) +
+  geom_point(aes(x = sample_date, y = NO3_umol), size = 1.75) +
+  scale_y_continuous(limits = c(0, 18), breaks = seq(0, 18, by = 4))  +
+  scale_x_datetime(date_breaks = "month", date_labels = "%m") +
+  ylab("Nitrate (umol)") +
+  xlab("Sample month") +
+  facet_wrap(~station_id)
+```
+
+Nitrite
+```{r}
+ggplot(dat %>% filter(station_id == "FBWS_1" | station_id == "FBWS_2")) +
+  geom_point(aes(x = sample_date, y = NO2_umol), size = 1.75) +
+  scale_y_continuous(limits = c(0, 1.25), breaks = seq(0, 1, by = 0.25))  +
+  scale_x_datetime(date_breaks = "month", date_labels = "%m") +
+  ylab("Nitrite (umol)") +
+  xlab("Sample month") +
+  facet_wrap(~station_id)
+```
+
+Silicate
+```{r}
+ggplot(dat %>% filter(station_id == "FBWS_1" | station_id == "FBWS_2")) +
+  geom_point(aes(x = sample_date, y = SiOH4_umol), size = 1.75) +
+  scale_y_continuous(limits = c(0, 280), breaks = seq(0, 280, by = 40))  +
+  scale_x_datetime(date_breaks = "month", date_labels = "%m") +
+  ylab("Silicate (umol)") +
+  xlab("Sample month") +
+  facet_wrap(~station_id)
+```
+
+Ammonium
+```{r}
+ggplot(dat %>% filter(station_id == "FBWS_1" | station_id == "FBWS_2")) +
+  geom_point(aes(x = sample_date, y = NH4_umol), size = 1.75) +
+  scale_y_continuous(limits = c(0, 325), breaks = seq(0, 325, by = 100))  +
+  scale_x_datetime(date_breaks = "month", date_labels = "%m") +
+  ylab("Ammonium (umol)") +
+  xlab("Sample month") +
+  facet_wrap(~station_id)
+```
+
+Precipitation
+```{r}
+ggplot(fh.monthly) +
+  geom_point(aes(x = date, y = total.precip), size = 1.75) +
+  scale_y_continuous(limits = c(0, 250), breaks = seq(0, 250, by = 50), sec.axis = sec_axis(trans = ~./24.5, name = "Total precipitation (in)"))  +
+  scale_x_datetime(breaks = seq(as.POSIXct("2021-03-30 00:00:00"), as.POSIXct("2021-11-01 00:00:00"), "month"), date_labels = "%m", limits = c(as.POSIXct("2021-03-30 00:00:00"), as.POSIXct("2021-11-01 00:00:00"))) +
+  ylab("Total precipitation (mm)") +
+  xlab("Month")
 ```
 
