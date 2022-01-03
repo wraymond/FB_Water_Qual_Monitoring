@@ -1,7 +1,7 @@
 ---
-title: "False Bay Watershed Report"
+title: "False Bay Watershed Report ver. 1.1"
 author: "Wendel Raymond"
-date: "12/30/2021"
+date: "1/3/2022"
 output:
   pdf_document: default
   chunk_output_type: console
@@ -15,10 +15,11 @@ knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE)
 This report compiles available watershed monitoring data to date. This includes periodic water quality sampling and flow rate data from Lucy Kramer's Friday Harbor Labs BMEE research apprenticeship project. The overall goal of the monitoring project is to gather consistent water quality data from key locations in the False Bay watershed ranging from completely fresh to completely marine. The hope is that these data can be useful to ongoing and future management, restoration, and scientific projects in the watershed and nearshore environment.
 
 ## Sampling locations
-```{r map, fig.align = 'center', out.width = 200}
+```{r map, fig.align = 'center', out.width = 250}
 knitr::include_graphics("../Data/FB_monitoring plan_v2.png")
 ```
 
+\newpage
 Sampling occurs at stations from the inlet to Lake Zylstra and the upper reaches of San Juan Valley Creek down the watershed to the mouth of False Bay Creek and the False Bay nearshore environment.
 
 * Station 1: False Bay (FB) - Nearshore
@@ -48,10 +49,10 @@ At all stations the following are measured
 At station 1 and 2, all the above are measured plus
 
 * Ortho-phosphate
-* Nitrate (micromol)
-* Nitrite (micromol)
-* Ammonium (micromol)
-* Silicate (micromol)
+* Nitrate ($\mu$mol/l)
+* Nitrite ($\mu$mol/l)
+* Ammonium ($\mu$mol/l)
+* Silicate ($\mu$mol/l)
 
 At station 3 and at AUG-2, water flow (CFS) is measured
 
@@ -133,6 +134,32 @@ fh.monthly <- fh %>%
   mutate(date = make_date(year, month, day)) %>% 
   mutate(date = as.POSIXct(date, format = "%Y-%m-%d", tz = "America/New_York"))
 
+fh.monthly.avg <- fh.monthly %>% 
+  group_by(month) %>%
+  summarise(mean.mo.precip = mean(total.precip, na.rm = TRUE),
+            sd.mo.precip = sd(total.precip, na.rm = TRUE),
+            n.mo.precip = n(),
+            mean.mo.tmax = mean(mean.tmax, na.rm = TRUE),
+            sd.mo.tmax = sd(mean.tmax, na.rm = TRUE),
+            n.mo.tmax = n(),
+            mean.mo.tmin = mean(mean.tmin, na.rm = TRUE),
+            sd.mo.tmin = sd(mean.tmin, na.rm = TRUE),
+            n.mo.tmin = n()) %>% 
+  mutate(se.mo.precip = sd.mo.precip / sqrt(n.mo.precip),
+         se.mo.tmax = sd.mo.tmax / sqrt(n.mo.tmax),
+         se.mo.tmin = sd.mo.tmin / sqrt(n.mo.tmin),
+         low.ci.precip = mean.mo.precip - qt(1 - (0.05 / 2), n.mo.precip - 1) * se.mo.precip,
+         hi.ci.precip = mean.mo.precip + qt(1 - (0.05 / 2), n.mo.precip - 1) * se.mo.precip,
+         low.ci.tmax = mean.mo.tmax - qt(1 - (0.05 / 2), n.mo.tmax - 1) * se.mo.tmax,
+         hi.ci.tmax = mean.mo.tmax + qt(1 - (0.05 / 2), n.mo.tmax - 1) * se.mo.tmax,
+         low.ci.tmin = mean.mo.tmin - qt(1 - (0.05 / 2), n.mo.tmin - 1) * se.mo.tmin,
+         hi.ci.tmin = mean.mo.tmin + qt(1 - (0.05 / 2), n.mo.tmin - 1) * se.mo.tmin) %>% 
+  mutate(day = 6) %>% 
+  mutate(year = 2021) %>% 
+  mutate(date = make_date(year, month, day)) %>% 
+  mutate(date = as.POSIXct(date, format = "%Y-%m-%d", tz = "America/New_York"))
+
+
 flow$date <- as.POSIXct(flow$date, format = "%m/%d/%Y")
 
 flow.sum <- flow %>% 
@@ -141,31 +168,38 @@ flow.sum <- flow %>%
 
 ```
 
+\newpage
 ### Precipitation
 
 ```{r precip, fig.asp = 0.8, fig.width = 4, fig.align = 'center'}
-ggplot(fh.monthly) +
-  geom_point(aes(x = date, y = total.precip), size = 1.75) +
+ggplot() +
+  geom_point(aes(x = date, y = total.precip), size = 1.75, data = fh.monthly) +
+  geom_point(aes(x = date, y = mean.mo.precip), size = 1.75, shape = 1, data = fh.monthly.avg) +
+  geom_errorbar(aes(x = date, ymin = mean.mo.precip - low.ci.precip, ymax = mean.mo.precip + hi.ci.precip), width = 0, data = fh.monthly.avg) +
   scale_y_continuous(limits = c(0, 250), breaks = seq(0, 250, by = 50), sec.axis = sec_axis(trans = ~./24.5, name = "Total precipitation (in)"))  +
   scale_x_datetime(breaks = seq(as.POSIXct("2021-04-01"), as.POSIXct("2021-11-30"), "month"), date_labels = "%b", limits = c(as.POSIXct("2021-04-01"), as.POSIXct("2021-11-30"))) +
   ylab("Total precipitation (mm)") +
   xlab("Month")
 ```
-Total monthly precipitation
+Total monthly precipitation (solid black) and long term (2000 - 2021) mean total monthly precipitation (open black) +/- 95% CI.
 
 
 ### Air Temperature
 
 ```{r air temp, fig.asp = 0.8, fig.width = 4, fig.align = 'center'}
-ggplot(fh.monthly) +
-  geom_point(aes(x = date, y = mean.tmax), size = 1.75, color = "red") +
-  geom_point(aes(x = date, y = mean.tmin), size = 1.75, color = "blue") +
-  scale_y_continuous(limits = c(0, 30), breaks = seq(0, 30, by = 5))  +
+ggplot() +
+  geom_point(aes(x = date, y = mean.tmax), size = 1.75, color = "red", data = fh.monthly) +
+  geom_point(aes(x = date, y = mean.tmin), size = 1.75, color = "blue", data = fh.monthly) +
+  geom_point(aes(x = date, y = mean.mo.tmax), size = 1.75, color = "red", shape = 1, data = fh.monthly.avg) +
+  geom_errorbar(aes(x = date, ymin = mean.mo.tmax - low.ci.tmax, ymax = mean.mo.tmax + hi.ci.tmax), color = "red", width = 0, data = fh.monthly.avg) +
+  geom_point(aes(x = date, y = mean.mo.tmin), size = 1.75, color = "blue", shape = 1, data = fh.monthly.avg) +
+  geom_errorbar(aes(x = date, ymin = mean.mo.tmin - low.ci.tmin, ymax = mean.mo.tmin + hi.ci.tmin), color = "blue", width = 0, data = fh.monthly.avg) +
+  scale_y_continuous(limits = c(0, 50), breaks = seq(0, 50, by = 10))  +
   scale_x_datetime(breaks = seq(as.POSIXct("2021-04-01"), as.POSIXct("2021-11-30"), "month"), date_labels = "%b", limits = c(as.POSIXct("2021-04-01"), as.POSIXct("2021-11-30"))) +
   ylab("Air Temperature (C)") +
   xlab("Month")
 ```
-Monthly mean maximum (red) and minimum (blue) air temperature
+April to November 2021 monthly mean daily maximum (solid red) and minimum (solid blue) air temperature. Long term (2000 - 2021) monthly mean maximum (open red) and minimum (open blue) air temperature +/- 95% CI. Data from Friday Harbor Airport.
 
 ### Flow
 
@@ -179,33 +213,40 @@ ggplot(flow.sum) +
 ```
 Stream flow at AUG-2 (brown) and Bailer Hill Road (green). Note limited date range.
 
+\newpage
 ### Total nitrogen and phosphorus
 
-```{r TN, fig.asp = 0.3, fig.width = 8, fig.align = 'center'}
+Total nitrogen
+
+```{r TN, fig.asp = 0.8, fig.width = 8, fig.align = 'center'}
 ggplot(dat) +
   geom_point(aes(x = sample_date, y = TN_umol), size = 1.75) +
   scale_y_continuous(limits = c(0, 610), breaks = seq(0, 600, by = 100))  +
   scale_x_datetime(date_breaks = "month", date_labels = "%b") +
   ylab("Total N (umol)") +
   xlab("Sample month") +
-  facet_wrap(~station_abb, nrow = 1, ncol = 9)
+  facet_wrap(~station_abb, nrow = 3, ncol = 3)
 ```
 
-```{r TP, fig.asp = 0.3, fig.width = 8, fig.align = 'center'}
+\newpage
+Total phosphorus
+
+```{r TP, fig.asp = 0.8, fig.width = 8, fig.align = 'center'}
 ggplot(dat) +
   geom_point(aes(x = sample_date, y = TP_umol), size = 1.75) +
   scale_y_continuous(limits = c(0, 46), breaks = seq(0, 45, by = 15))  +
   scale_x_datetime(date_breaks = "month", date_labels = "%b") +
   ylab("Total P (umol)") +
   xlab("Sample month") +
-  facet_wrap(~station_abb, nrow = 1, ncol = 9)
+  facet_wrap(~station_abb, nrow = 3, ncol = 3)
 ```
 
+\newpage
 ### Nutrients
 
 Phosphate
 
-```{r po4, fig.asp = 0.3, fig.width = 4, fig.align = 'center'}
+```{r po4, fig.asp = 0.38, fig.width = 8, fig.align = 'center'}
 ggplot(dat %>% filter(station_id == "FBWS_1" | station_id == "FBWS_2")) +
   geom_point(aes(x = sample_date, y = PO4_umol), size = 1.75) +
   scale_y_continuous(limits = c(0, 25), breaks = seq(0, 25, by = 5))  +
@@ -217,7 +258,7 @@ ggplot(dat %>% filter(station_id == "FBWS_1" | station_id == "FBWS_2")) +
 
 Nitrate
 
-```{r no3, fig.asp = 0.3, fig.width = 4, fig.align = 'center'}
+```{r no3, fig.asp = 0.38, fig.width = 8, fig.align = 'center'}
 ggplot(dat %>% filter(station_id == "FBWS_1" | station_id == "FBWS_2")) +
   geom_point(aes(x = sample_date, y = NO3_umol), size = 1.75) +
   scale_y_continuous(limits = c(0, 18), breaks = seq(0, 18, by = 4))  +
@@ -229,7 +270,7 @@ ggplot(dat %>% filter(station_id == "FBWS_1" | station_id == "FBWS_2")) +
 
 Nitrite
 
-```{r no2, fig.asp = 0.3, fig.width = 4, fig.align = 'center'}
+```{r no2, fig.asp = 0.38, fig.width = 8, fig.align = 'center'}
 ggplot(dat %>% filter(station_id == "FBWS_1" | station_id == "FBWS_2")) +
   geom_point(aes(x = sample_date, y = NO2_umol), size = 1.75) +
   scale_y_continuous(limits = c(0, 1.25), breaks = seq(0, 1, by = 0.25))  +
@@ -241,7 +282,7 @@ ggplot(dat %>% filter(station_id == "FBWS_1" | station_id == "FBWS_2")) +
 
 Silicate
 
-```{r sio4, fig.asp = 0.3, fig.width = 4, fig.align = 'center'}
+```{r sio4, fig.asp = 0.38, fig.width = 8, fig.align = 'center'}
 ggplot(dat %>% filter(station_id == "FBWS_1" | station_id == "FBWS_2")) +
   geom_point(aes(x = sample_date, y = SiOH4_umol), size = 1.75) +
   scale_y_continuous(limits = c(0, 280), breaks = seq(0, 280, by = 40))  +
@@ -253,7 +294,7 @@ ggplot(dat %>% filter(station_id == "FBWS_1" | station_id == "FBWS_2")) +
 
 Ammonium
 
-```{r nh4, fig.asp = 0.3, fig.width = 4, fig.align = 'center'}
+```{r nh4, fig.asp = 0.38, fig.width = 8, fig.align = 'center'}
 ggplot(dat %>% filter(station_id == "FBWS_1" | station_id == "FBWS_2")) +
   geom_point(aes(x = sample_date, y = NH4_umol), size = 1.75) +
   scale_y_continuous(limits = c(0, 325), breaks = seq(0, 325, by = 100))  +
@@ -263,40 +304,43 @@ ggplot(dat %>% filter(station_id == "FBWS_1" | station_id == "FBWS_2")) +
   facet_wrap(~station_abb, nrow = 1, ncol = 2)
 ```
 
+\newpage
 ### Water condition
 
 Temperature
 
-```{r h2o temp, fig.asp = 0.3, fig.width = 4, fig.align = 'center'}
+```{r h2o temp, fig.asp = 0.8, fig.width = 8, fig.align = 'center'}
 ggplot(dat) +
   geom_point(aes(x = sample_date, y = temp_c), size = 1.75) +
   scale_y_continuous(limits = c(5, 25), breaks = seq(5, 25, by = 5)) +
   scale_x_datetime(date_breaks = "month", date_labels = "%b") +
   ylab("Temperature (C)") +
   xlab("Sample month") +
-  facet_wrap(~station_abb, nrow = 1, ncol = 9)
+  facet_wrap(~station_abb, nrow = 3, ncol = 3)
 ```
 
+\newpage
 Dissolved oxygen
 
-```{r do, fig.asp = 0.3, fig.width = 4, fig.align = 'center'}
+```{r do, fig.asp = 0.8, fig.width = 8, fig.align = 'center'}
 ggplot(dat) +
   geom_point(aes(x = sample_date, y = DO_mgL), size = 1.75) +
   scale_y_continuous(limits = c(0, 18), breaks = seq(0, 18, by = 4))  +
   scale_x_datetime(date_breaks = "month", date_labels = "%b") +
   ylab("DO (mg/l)") +
   xlab("Sample month") +
-  facet_wrap(~station_abb, nrow = 1, ncol = 9)
+  facet_wrap(~station_abb, nrow = 3, ncol = 3)
 ```
 
+\newpage
 Salinity
 
-```{r sal, fig.asp = 0.3, fig.width = 4, fig.align = 'center'}
+```{r sal, fig.asp = 0.8, fig.width = 8, fig.align = 'center'}
 ggplot(dat) +
   geom_point(aes(x = sample_date, y = sal_ppt), size = 1.75) +
   scale_y_continuous(limits = c(0, 34), breaks = seq(0, 32, by = 4))  +
   scale_x_datetime(date_breaks = "month", date_labels = "%b") +
   ylab("Salinity (ppt)") +
   xlab("Sample month") +
-  facet_wrap(~station_abb, nrow = 1, ncol = 9)
+  facet_wrap(~station_abb, nrow = 3, ncol = 3)
 ```
