@@ -27,7 +27,7 @@ Sampling occurs at stations from the inlet to Lake Zylstra and the upper reaches
 * Station 3: FBC - Bailer Hill
 * Station 4: FBC - Lower
 * Station 5: San Juan Valley Creek (SJVC) - Lower
-* Station 6: Woodduck Pond (WDP) - Outlet
+* Station 6: Emmerling Creek - Outlet
 * Station 7: Lake Zylstra (LZ) - Lower Dam
 * Station 8: LZ - Inlet
 * Station 9: SJVC - Upper
@@ -83,6 +83,7 @@ flow <- read.csv("../Data/FBWS_FBC_Flow.csv", header = TRUE, stringsAsFactors = 
 ```
 
 ```{r data mgmt}
+## Nutrients ##
 qual$sample_date <- as.POSIXct(qual$sample_date, format = "%m/%d/%Y")
 nuts$sample_date <- as.POSIXct(nuts$sample_date, format = "%m/%d/%Y")
 
@@ -102,7 +103,8 @@ nuts.mean <- nuts.comb %>%
             NO2_umol = mean(NO2_umol),
             NH4_umol = mean(NH4_umol),
             TP_umol = mean(TP_umol),
-            TN_umol = mean(TN_umol))
+            TN_umol = mean(TN_umol)) %>% 
+  mutate(N_P = TN_umol/TP_umol)
 
 dat <- merge(qual[, 1:11], nuts.mean, by = c("station_name", "sample_date"), all.x = TRUE)
 
@@ -113,14 +115,15 @@ dat <- dat %>%
     station_id == "FBWS_3" ~ "FBC - Bailer Hill",
     station_id == "FBWS_4" ~ "FBC - Lower",
     station_id == "FBWS_5" ~ "SJVC - Lower",
-    station_id == "FBWS_6" ~ "WDP - Outlet",
+    station_id == "FBWS_6" ~ "EM - Outlet",
     station_id == "FBWS_7" ~ "LZ - Lower Dam",
     station_id == "FBWS_8" ~ "LZ - Inlet",
     station_id == "FBWS_9" ~ "SJVC - Upper"
   ))
 
-dat$station_abb <- factor(dat$station_abb, levels = c("LZ - Inlet", "WDP - Outlet", "LZ - Lower Dam", "FBC - Lower", "SJVC - Upper", "SJVC - Lower", "FBC - Bailer Hill", "FBC - Mouth", "FB - Nearshore"))
+dat$station_abb <- factor(dat$station_abb, levels = c("LZ - Inlet", "EM - Outlet", "LZ - Lower Dam", "FBC - Lower", "SJVC - Upper", "SJVC - Lower", "FBC - Bailer Hill", "FBC - Mouth", "FB - Nearshore"))
 
+## Friday Harbor Airport ##
 fh$DATE <- as.POSIXct(fh$DATE, format = "%Y-%m-%d")
 fh <- fh %>% 
   mutate(month = format(DATE, "%m"), year = format(DATE, "%Y"), day = format(DATE, "%d"))
@@ -159,7 +162,7 @@ fh.monthly.avg <- fh.monthly %>%
   mutate(date = make_date(year, month, day)) %>% 
   mutate(date = as.POSIXct(date, format = "%Y-%m-%d", tz = "America/New_York"))
 
-
+## Flow #
 flow$date <- as.POSIXct(flow$date, format = "%m/%d/%Y")
 
 flow.sum <- flow %>% 
@@ -235,6 +238,19 @@ Total phosphorus
 ggplot(dat) +
   geom_point(aes(x = sample_date, y = TP_umol), size = 1.75) +
   scale_y_continuous(limits = c(0, 46), breaks = seq(0, 45, by = 15))  +
+  scale_x_datetime(date_breaks = "month", date_labels = "%b") +
+  ylab("Total P (umol)") +
+  xlab("Sample month") +
+  facet_wrap(~station_abb, nrow = 3, ncol = 3)
+```
+
+\newpage
+N:P Ratio
+
+```{r NP, fig.asp = 0.8, fig.width = 8, fig.align = 'center'}
+ggplot(dat) +
+  geom_point(aes(x = sample_date, y = N_P), size = 1.75) +
+  scale_y_continuous(limits = c(0, 150), breaks = seq(0, 150, by = 25))  +
   scale_x_datetime(date_breaks = "month", date_labels = "%b") +
   ylab("Total P (umol)") +
   xlab("Sample month") +
