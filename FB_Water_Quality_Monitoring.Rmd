@@ -64,6 +64,12 @@ Merge nutrients data with water quality data.
 dat <- merge(qual[, 1:11], nuts.mean, by = c("station_name", "sample_date"), all.x = TRUE)
 ```
 
+Computer N:P
+```{r}
+dat$N_P <- dat$TN_umol/dat$TP_umol
+```
+
+
 Add abbreviated names and force order
 ```{r}
 dat <- dat %>% 
@@ -128,6 +134,8 @@ flow.sum <- flow %>%
   summarise(flow_cfs = mean(flow_cfs, na.rm = TRUE))
 ```
 
+dat.sum$NO3_umol <- (dat.sum$NO3_mgL * 1000) * 0.016128
+
 
 ### Trends
 
@@ -135,22 +143,24 @@ Temperature
 ```{r echo=FALSE}
 ggplot(dat) +
   geom_point(aes(x = sample_date, y = temp_c), size = 1.75) +
+  geom_line(aes(x = sample_date, y = temp_c)) +
   scale_y_continuous(limits = c(5, 25), breaks = seq(5, 25, by = 5)) +
   scale_x_datetime(date_breaks = "month", date_labels = "%b") +
   ylab("Temperature (C)") +
   xlab("Sample month") +
-  facet_wrap(~station_abb, nrow = 1, ncol = 9)
+  facet_wrap(~station_abb, nrow = 3, ncol = 3)
 ```
 
 Dissolved oxygen
 ```{r echo=FALSE}
 ggplot(dat) +
   geom_point(aes(x = sample_date, y = DO_mgL), size = 1.75) +
+  geom_line(aes(x = sample_date, y = DO_mgL)) +
   scale_y_continuous(limits = c(0, 18), breaks = seq(0, 18, by = 4))  +
   scale_x_datetime(date_breaks = "month", date_labels = "%b") +
   ylab("DO (mg/l)") +
   xlab("Sample month") +
-  facet_wrap(~station_abb, nrow = 1, ncol = 9)
+  facet_wrap(~station_abb, nrow = 3, ncol = 3)
 ```
 
 Salinity
@@ -168,44 +178,63 @@ Total Phosphorus
 ```{r}
 ggplot(dat) +
   geom_point(aes(x = sample_date, y = TP_umol), size = 1.75) +
+  geom_line(aes(x = sample_date, y = TP_umol)) +
   scale_y_continuous(limits = c(0, 46), breaks = seq(0, 45, by = 15))  +
   scale_x_datetime(date_breaks = "month", date_labels = "%b") +
   ylab("Total P (umol)") +
   xlab("Sample month") +
-  facet_wrap(~station_abb, nrow = 1, ncol = 9)
+  facet_wrap(~station_abb, nrow = 3, ncol = 3)
 ```
 
 Total Nitrogen
 ```{r}
 ggplot(dat) +
   geom_point(aes(x = sample_date, y = TN_umol), size = 1.75) +
+  geom_line(aes(x = sample_date, y = TN_umol)) +
   scale_y_continuous(limits = c(0, 610), breaks = seq(0, 600, by = 100))  +
   scale_x_datetime(date_breaks = "month", date_labels = "%b") +
   ylab("Total N (umol)") +
   xlab("Sample month") +
-  facet_wrap(~station_abb, nrow = 1, ncol = 9)
+  facet_wrap(~station_abb, nrow = 3, ncol = 3)
+```
+
+N:P
+```{r}
+ggplot(dat) +
+  geom_point(aes(x = sample_date, y = N_P), size = 1.75) +
+  geom_line(aes(x = sample_date, y = N_P)) +
+  geom_hline(aes(yintercept = 16), color = "red") +
+  scale_y_continuous(limits = c(0, 150), breaks = seq(0, 150, by = 50))  +
+  scale_x_datetime(date_breaks = "month", date_labels = "%b") +
+  ylab("Total N (umol)") +
+  xlab("Sample month") +
+  facet_wrap(~station_abb, nrow = 3, ncol = 3)
 ```
 
 Phosphate
 ```{r}
 ggplot(dat %>% filter(station_id == "FBWS_1" | station_id == "FBWS_2")) +
-  geom_point(aes(x = sample_date, y = PO4_umol), size = 1.75) +
+  geom_point(aes(x = sample_date, y = PO4_umol), size = 2) +
+  geom_line(aes(x = sample_date, y = PO4_umol)) +
   scale_y_continuous(limits = c(0, 25), breaks = seq(0, 25, by = 5))  +
   scale_x_datetime(date_breaks = "month", date_labels = "%b") +
   ylab("Phosphate (umol)") +
   xlab("Sample month") +
-  facet_wrap(~station_abb, nrow = 1, ncol = 2)
+  theme(text = element_text(size = 20)) +
+  facet_wrap(~station_abb, nrow = 2, ncol = 1)
 ```
 
 Nitrate
 ```{r}
 ggplot(dat %>% filter(station_id == "FBWS_1" | station_id == "FBWS_2")) +
-  geom_point(aes(x = sample_date, y = NO3_umol), size = 1.75) +
+  geom_point(aes(x = sample_date, y = NO3_umol), size = 2) +
+  geom_line(aes(x = sample_date, y = NO3_umol)) +
   scale_y_continuous(limits = c(0, 18), breaks = seq(0, 18, by = 4))  +
   scale_x_datetime(date_breaks = "month", date_labels = "%b") +
   ylab("Nitrate (umol)") +
   xlab("Sample month") +
-  facet_wrap(~station_abb, nrow = 1, ncol = 2)
+  theme(text = element_text(size = 20)) +
+  facet_wrap(~station_abb, nrow = 2, ncol = 1)
 ```
 
 Nitrite
@@ -244,11 +273,13 @@ ggplot(dat %>% filter(station_id == "FBWS_1" | station_id == "FBWS_2")) +
 Precipitation
 ```{r}
 ggplot(fh.monthly) +
-  geom_point(aes(x = date, y = total.precip), size = 1.75) +
+  geom_point(aes(x = date, y = total.precip), size = 2) +
+  geom_line(aes(x = date, y = total.precip)) +
   scale_y_continuous(limits = c(0, 250), breaks = seq(0, 250, by = 50), sec.axis = sec_axis(trans = ~./24.5, name = "Total precipitation (in)"))  +
   scale_x_datetime(breaks = seq(as.POSIXct("2021-04-01"), as.POSIXct("2021-11-30"), "month"), date_labels = "%b", limits = c(as.POSIXct("2021-04-01"), as.POSIXct("2021-11-30"))) +
   ylab("Total precipitation (mm)") +
-  xlab("Month")
+  xlab("Month") +
+  theme(text = element_text(size=20))
 ```
 
 Air Temp
@@ -265,10 +296,12 @@ ggplot(fh.monthly) +
 Flow
 ```{r}
 ggplot(flow.sum) +
-  geom_point(aes(x = date, y = flow_cfs, color = station_name), size = 1.75) +
+  geom_point(aes(x = date, y = flow_cfs, color = station_name), size = 2) +
   scale_color_manual("Station", labels = c("AUG-2", "FCB - Bailer Hill"), values = c("#AD640C", "#42AC0D")) +
   scale_y_continuous(limits = c(-2, 30), breaks = seq(0, 30, by = 5))  +
+  #scale_x_datetime(breaks = seq(as.POSIXct("2021-10-15"), as.POSIXct("2021-12-1"), "day"), date_labels = "%b-%m", limits = c(as.POSIXct("2021-10-15"), as.POSIXct("2021-12-1"))) +
   ylab("Flow (CFS)") +
-  xlab("Date")
+  xlab("Date")  +
+  theme(text = element_text(size=20), axis.text.x = element_text(angle = 45, hjust = 1))
 ```
 
