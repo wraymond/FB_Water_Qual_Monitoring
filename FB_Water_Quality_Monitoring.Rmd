@@ -13,7 +13,6 @@ editor_options:
 library(tidyverse)
 library(ggplot2)
 library(rnoaa)
-options(noaakey = "tDzKKwcWqlZFAcwgjTanQIpnFLZvAAET")
 library(lubridate)
 
 theme_set(theme_classic())
@@ -64,7 +63,7 @@ Merge nutrients data with water quality data.
 dat <- merge(qual[, 1:11], nuts.mean, by = c("station_name", "sample_date"), all.x = TRUE)
 ```
 
-Computer N:P
+Compute N:P
 ```{r}
 dat$N_P <- dat$TN_umol/dat$TP_umol
 ```
@@ -79,13 +78,13 @@ dat <- dat %>%
     station_id == "FBWS_3" ~ "FBC - Bailer Hill",
     station_id == "FBWS_4" ~ "FBC - Lower",
     station_id == "FBWS_5" ~ "SJVC - Lower",
-    station_id == "FBWS_6" ~ "WDP - Outlet",
+    station_id == "FBWS_6" ~ "Emm - Outlet",
     station_id == "FBWS_7" ~ "LZ - Lower Dam",
     station_id == "FBWS_8" ~ "LZ - Inlet",
     station_id == "FBWS_9" ~ "SJVC - Upper"
   ))
 
-dat$station_abb <- factor(dat$station_abb, levels = c("LZ - Inlet", "WDP - Outlet", "LZ - Lower Dam", "FBC - Lower", "SJVC - Upper", "SJVC - Lower", "FBC - Bailer Hill", "FBC - Mouth", "FB - Nearshore"))
+dat$station_abb <- factor(dat$station_abb, levels = c("LZ - Inlet", "Emm - Outlet", "LZ - Lower Dam", "FBC - Lower", "SJVC - Upper", "SJVC - Lower", "FBC - Bailer Hill", "FBC - Mouth", "FB - Nearshore"))
 ```
 
 
@@ -93,7 +92,7 @@ dat$station_abb <- factor(dat$station_abb, levels = c("LZ - Inlet", "WDP - Outle
 
 Read data pulled from NOAA
 ```{r}
-fh <- read.csv("../Data/FH_Airport_1.2000_11.2021.csv", header = TRUE, stringsAsFactors = FALSE)
+fh <- read.csv("../Data/FH_Airport_1.2000_4.2022.csv", header = TRUE, stringsAsFactors = FALSE)
 ```
 
 ##### Data managemnt
@@ -148,7 +147,7 @@ ggplot(dat) +
   scale_x_datetime(date_breaks = "month", date_labels = "%b") +
   ylab("Temperature (C)") +
   xlab("Sample month") +
-  facet_wrap(~station_abb, nrow = 3, ncol = 3)
+  facet_wrap(~station_abb, nrow = 5, ncol = 2)
 ```
 
 Dissolved oxygen
@@ -195,7 +194,7 @@ ggplot(dat) +
   scale_x_datetime(date_breaks = "month", date_labels = "%b") +
   ylab("Total N (umol)") +
   xlab("Sample month") +
-  facet_wrap(~station_abb, nrow = 3, ncol = 3)
+  facet_wrap(~station_abb, nrow = 5, ncol = 2)
 ```
 
 N:P
@@ -229,7 +228,7 @@ Nitrate
 ggplot(dat %>% filter(station_id == "FBWS_1" | station_id == "FBWS_2")) +
   geom_point(aes(x = sample_date, y = NO3_umol), size = 2) +
   geom_line(aes(x = sample_date, y = NO3_umol)) +
-  scale_y_continuous(limits = c(0, 18), breaks = seq(0, 18, by = 4))  +
+  #scale_y_continuous(limits = c(0, 18), breaks = seq(0, 18, by = 4))  +
   scale_x_datetime(date_breaks = "month", date_labels = "%b") +
   ylab("Nitrate (umol)") +
   xlab("Sample month") +
@@ -275,9 +274,9 @@ Precipitation
 ggplot(fh.monthly) +
   geom_point(aes(x = date, y = total.precip), size = 2) +
   geom_line(aes(x = date, y = total.precip)) +
-  scale_y_continuous(limits = c(0, 250), breaks = seq(0, 250, by = 50), sec.axis = sec_axis(trans = ~./24.5, name = "Total precipitation (in)"))  +
-  scale_x_datetime(breaks = seq(as.POSIXct("2021-04-01"), as.POSIXct("2021-11-30"), "month"), date_labels = "%b", limits = c(as.POSIXct("2021-04-01"), as.POSIXct("2021-11-30"))) +
-  ylab("Total precipitation (mm)") +
+  scale_y_continuous(limits = c(0, 10), breaks = seq(0, 10, by = 1), sec.axis = sec_axis(trans = ~.*24.5, name = "Total precipitation (mm)"))  +
+  scale_x_datetime(breaks = seq(as.POSIXct("2021-04-01"), as.POSIXct("2022-04-01"), "month"), date_labels = "%b", limits = c(as.POSIXct("2021-04-01"), as.POSIXct("2022-04-01"))) +
+  ylab("Total precipitation (in)") +
   xlab("Month") +
   theme(text = element_text(size=20))
 ```
