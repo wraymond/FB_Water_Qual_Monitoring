@@ -93,7 +93,7 @@ dat$station_abb <- factor(dat$station_abb, levels = c("LZ - Inlet", "Emm - Outle
 
 Read data pulled from NOAA
 ```{r}
-fh <- read.csv("../Data/FH_Airport_1.2000_4.2022.csv", header = TRUE, stringsAsFactors = FALSE)
+fh <- read.csv("../Data/FH_Airport_1.2000_5.2022.csv", header = TRUE, stringsAsFactors = FALSE)
 ```
 
 ##### Data managemnt
@@ -135,6 +135,45 @@ flow.sum <- flow %>%
 ```
 
 dat.sum$NO3_umol <- (dat.sum$NO3_mgL * 1000) * 0.016128
+
+#### Tidbit Loggers
+Load tidbit logger data
+```{r}
+tid.Bailer <- read.csv("../Data/FBCreek_BailerHill_Apr2021_May2022_clean.csv", header = TRUE, stringsAsFactors = FALSE)
+tid.UpZyls <- read.csv("../Data/ZylLake_Inlet_Apr2021_May2022_clean.csv", header = TRUE, stringsAsFactors = FALSE)
+tid.LowFBC <- read.csv("../Data/FBCreek_Lower_Apr2021_May2022_clean.csv", header = TRUE, stringsAsFactors = FALSE)
+tid.MouthFBC <- read.csv("../Data/FBCreek_Mouth_Apr2021_May2022_clean.csv", header = TRUE, stringsAsFactors = FALSE)
+tid.UpSJVC <- read.csv("../Data/SJVCreek_Upper_Apr2021_May2022_clean.csv", header = TRUE, stringsAsFactors = FALSE)
+tid.OutEmm <- read.csv("../Data/WoodDuckPond_Outlet_Apr2021_May2022_clean.csv", header = TRUE, stringsAsFactors = FALSE)
+```
+
+##### Data managment
+Assign names
+
+```{r}
+tid.Bailer$station_id <- "FBWS_3"
+tid.UpZyls$station_id <- "FBWS_8"
+tid.LowFBC$station_id <- "FBWS_4"
+tid.MouthFBC$station_id <- "FBWS_2"
+tid.UpSJVC$station_id <- "FBWS_9"
+tid.OutEmm$station_id <- "FBWS_6"
+```
+
+Combine files
+```{r}
+tid.dat <- bind_rows(tid.Bailer, tid.UpZyls, tid.LowFBC, tid.MouthFBC, tid.UpSJVC, tid.OutEmm)
+```
+
+Manage date
+```{r}
+tid.dat$date <- as.POSIXct(tid.dat$date, format = "%m/%d/%Y %H:%M", tz = "America/Los_Angeles")
+```
+
+Limit date range to April 22 2021 to May 23 2022
+```{r}
+tid.dat <- tid.dat %>% 
+  filter(between(date, as.POSIXct('2021-04-22 00:00:00'), as.POSIXct('2022-05-23 00:00:00')))
+```
 
 
 ### Trends
@@ -308,5 +347,14 @@ ggplot(flow.sum) +
   ylab("Flow (CFS)") +
   xlab("Date")  +
   theme(text = element_text(size=20), axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+Tidbits
+```{r}
+tid.dat$timestamp <- factor(strftime(tid.dat$date,"%b"),levels = month.abb)
+ggplot(tid.dat) +
+  geom_boxplot(aes(x = timestamp, temp_c)) +
+  facet_wrap(~station_id)
+
 ```
 
