@@ -23,6 +23,7 @@ theme_set(theme_classic())
 Load raw water quality and nutrient data
 ```{r}
 qual <- read.csv("../Data/FBWS_water_quality_monitoring.csv", header = TRUE, stringsAsFactors = FALSE)
+
 nuts <- read.csv("../Data/FBWS_water_nutrients.csv", header = TRUE, stringsAsFactors = FALSE)
 ```
 
