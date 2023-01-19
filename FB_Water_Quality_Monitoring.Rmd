@@ -14,6 +14,7 @@ library(tidyverse)
 library(ggplot2)
 library(rnoaa)
 library(lubridate)
+library(cowplot)
 
 theme_set(theme_classic())
 ```
@@ -194,6 +195,49 @@ tid.daily$date_short <- as.POSIXct(tid.daily$date_short, format = "%m/%d/%Y")
 tid.daily <- left_join(tid.daily, dat[, c(3, 20)])
 ```
 
+#### Ulva
+
+```{r}
+## On the ground collection ##
+ul <- read.csv("../Data/FBWS_ulva_cover.csv", header = TRUE, stringsAsFactors = FALSE)
+
+## Done captured ##
+ul.drone <- read.csv("../Data/FBWS_drone_ulva_cover.csv", header = TRUE, stringsAsFactors = FALSE)
+```
+
+##### Data managment
+
+On the ground Ulva data
+```{r}
+## Calculations ##
+ul$dry_mass_g <- ul$dry_tray_ulva_mass_g - ul$tray_mass_g
+ul$dry_mass_gmsq <- ul$dry_mass_g / ul$ulva_collection_corr
+
+## Date ##
+ul$date <- as.POSIXct(ul$date, format = "%m/%d/%Y")
+```
+
+Compute summary
+```{r}
+ul.sum <- ul %>% 
+  group_by(date) %>% 
+  summarise(mean_prim_sed = mean(prim_substrate_no, na.rm = TRUE),
+            sd_prim_sed = sd(prim_substrate_no, na.rm = TRUE),
+            mean_secd_sed = mean(secd_substrate_no, na.rm = TRUE),
+            sd_secd_sed = sd(secd_substrate_no, na.rm = TRUE),
+            mean_ul_mass_gmsq = mean(dry_mass_gmsq, na.rm = TRUE),
+            sd_ul_mass_gmsq = sd(dry_mass_gmsq, na.rm = TRUE))
+```
+
+Drone data
+```{r}
+ul.drone$sample_date <- as.POSIXct(ul.drone$sample_date, format = "%m/%d/%Y")
+
+ul.drone <- ul.drone %>% 
+  mutate(ulva_area_msq = ulva_pix * pixel_area_mxm,
+         other_area_msq = other_pix * pixel_area_mxm,
+         ul_percent_cover = ulva_area_msq / (ulva_area_msq + other_area_msq))
+```
 
 ### Trends
 
@@ -334,12 +378,13 @@ png(filename = "../Figures/Nitrate_Point.png", width = 3.25, height = 4, res = 4
 ggplot(dat %>% 
          filter(station_id %in% c("FBWS_1", "FBWS_2"))) +
   geom_point(aes(x = sample_date, y = NO3_umol), size = 2) +
+  scale_y_continuous(limits = c(0, 25), breaks = seq(0, 25, by = 5)) +
   scale_x_datetime(date_breaks = "month", date_labels = "%b %y", limits = c(as.POSIXct("2021-04-01 00:00:00"), as.POSIXct("2022-08-01 00:00:00"))) +
   ylab("Nitrate (umol)") +
   xlab("Sample month") +
   theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 8)) +
   theme(text = element_text(size = 12)) +
-  facet_wrap(~station_abb, scales = "free", nrow = 2, ncol = 1)
+  facet_wrap(~station_abb, nrow = 2, ncol = 1)
 dev.off()
 ```
 
@@ -366,7 +411,7 @@ ggplot(dat %>%
          filter(station_id %in% c("FBWS_1", "FBWS_2"))) +
   geom_point(aes(x = sample_date, y = SiOH4_umol), size = 2) +
   scale_x_datetime(date_breaks = "month", date_labels = "%b %y", limits = c(as.POSIXct("2021-04-01 00:00:00"), as.POSIXct("2022-08-01 00:00:00"))) +
-  ylab("Nitrite (umol)") +
+  ylab("Silicate (umol)") +
   xlab("Sample month") +
   theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 8)) +
   theme(text = element_text(size = 12)) +
@@ -380,6 +425,7 @@ png(filename = "../Figures/Ammon_Point.png", width = 3.25, height = 4, res = 400
 ggplot(dat %>% 
          filter(station_id %in% c("FBWS_1", "FBWS_2"))) +
   geom_point(aes(x = sample_date, y = NH4_umol), size = 2) +
+  scale_y_continuous(limits = c(0, 100), breaks = seq(0, 100, by = 25)) +
   scale_x_datetime(date_breaks = "month", date_labels = "%b %y", limits = c(as.POSIXct("2021-04-01 00:00:00"), as.POSIXct("2022-08-01 00:00:00"))) +
   ylab("Ammonium (umol)") +
   xlab("Sample month") +
@@ -415,6 +461,36 @@ ggplot(fh.monthly) +
 dev.off()
 ```
 
+#### Combo plots
+```{r}
+## Nitrate and ulva mass ##
+p.no3 <- ggplot(dat %>% 
+         filter(station_id %in% c("FBWS_1", "FBWS_2"))) +
+  geom_point(aes(x = sample_date, y = NO3_umol, color = station_abb), size = 2) +
+  geom_line(aes(x = sample_date, y = NO3_umol, color = station_abb), size = 1) +
+  scale_color_manual("Station", values = c("#B0891C", "#3C4BBA")) +
+  scale_y_continuous(limits = c(0, 30), breaks = seq(0, 30, by = 5)) +
+  scale_x_datetime(date_breaks = "month", date_labels = "%b %y", limits = c(as.POSIXct("2021-04-01"), as.POSIXct("2022-09-01"))) +
+  ylab("NItrate (umol)") +
+  xlab("Sample month") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 8)) +
+  theme(text = element_text(size = 12)) +
+  theme(legend.position = c(0.2, 0.9), legend.text = element_text(size = 6), legend.title = element_text(size = 10))
+
+p.ulmass <- ggplot(ul) +
+  geom_boxplot(aes(date, y = dry_mass_gmsq, group = date)) +
+  scale_y_continuous(limits = c(0, 300), breaks = seq(0, 300, by = 50))  +
+  scale_x_datetime(date_breaks = "month", date_labels = "%b %y", limits = c(as.POSIXct("2021-04-01"), as.POSIXct("2022-09-01"))) +
+  ylab("Ulva mass (g/m sq)") +
+  xlab("Month") +
+  theme(text = element_text(size = 12), axis.text.x = element_text(angle = 45, hjust = 1 , size = 8))
+
+png(filename = "../Figures/NO3_UlvaMass.png", width = 4, height = 6.5, res = 400, units = "in")
+plot_grid(p.no3, p.ulmass, nrow = 2, ncol = 1, align = "v")
+dev.off()
+```
+
+
 #### Air Temp
 ```{r}
 png(filename = "../Figures/AirTemp_Airport_Samp.png", width = 5, height = 4, res = 400, units = "in")
@@ -425,7 +501,49 @@ ggplot(fh.monthly) +
   scale_x_datetime(date_breaks = "month", date_labels = "%b %y", limits = c(as.POSIXct("2021-04-01"), as.POSIXct("2023-01-01"))) +
   ylab("Temperature (°C)") +
   xlab("Month") +
-  theme(text = element_text(size = 14), axis.text.x = element_text(angle = 45, hjust=1))
+  theme(text = element_text(size = 12), axis.text.x = element_text(angle = 45, hjust=1))
+dev.off()
+```
+
+#### Ulva
+
+On the ground
+```{r}
+## Plots of Means ##
+png(filename = "../Figures/Ulva_mass.png", width = 5, height = 4, res = 400, units = "in")
+ggplot(ul.sum) +
+  geom_point(aes(x = date, y = mean_ul_mass_gmsq), size = 2) +
+  geom_errorbar(aes(x = date, ymin = mean_ul_mass_gmsq - sd_ul_mass_gmsq, ymax = mean_ul_mass_gmsq + sd_ul_mass_gmsq), width = 0) +
+  scale_y_continuous(limits = c(-30, 180), breaks = seq(-30, 180, by = 30))  +
+  scale_x_datetime(date_breaks = "month", date_labels = "%b %y", limits = c(as.POSIXct("2021-04-01"), as.POSIXct("2023-01-01"))) +
+  ylab("Ulva mass (g/m sq)") +
+  xlab("Month") +
+  theme(text = element_text(size = 12), axis.text.x = element_text(angle = 45, hjust=1))
+dev.off()
+
+## Box plot ##
+png(filename = "../Figures/Ulva_mass_box.png", width = 5, height = 4, res = 400, units = "in")
+ggplot(ul) +
+  geom_boxplot(aes(date, y = dry_mass_gmsq, group = date)) +
+  scale_y_continuous(limits = c(0, 300), breaks = seq(0, 300, by = 50))  +
+  scale_x_datetime(date_breaks = "month", date_labels = "%b %y", limits = c(as.POSIXct("2021-04-01"), as.POSIXct("2022-09-01"))) +
+  ylab("Ulva mass (g/m sq)") +
+  xlab("Month") +
+  theme(text = element_text(size = 12), axis.text.x = element_text(angle = 45, hjust=1))
+dev.off()
+```
+
+Drone
+```{r}
+mean(ul.drone$ul_percent_cover)
+png(filename = "../Figures/Ulva_prop_drone.png", width = 5, height = 4, res = 400, units = "in")
+ggplot(ul.drone) +
+  geom_point(aes(x = sample_date, y = ul_percent_cover), size = 2) +
+  scale_y_continuous(limits = c(0, 0.8), breaks = seq(0, 0.8, by = 0.2))  +
+  scale_x_datetime(date_breaks = "month", date_labels = "%b %y", limits = c(as.POSIXct("2021-04-01"), as.POSIXct("2023-01-01"))) +
+  ylab("Proportion Ulva") +
+  xlab("Month") +
+  theme(text = element_text(size = 12), axis.text.x = element_text(angle = 45, hjust=1))
 dev.off()
 ```
 
