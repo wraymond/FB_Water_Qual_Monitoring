@@ -15,6 +15,7 @@ library(ggplot2)
 library(rnoaa)
 library(lubridate)
 library(cowplot)
+library(noaaoceans)
 
 theme_set(theme_classic())
 ```
@@ -65,9 +66,19 @@ Merge nutrients data with water quality data.
 dat <- merge(qual[, 1:11], nuts.mean, by = c("station_name", "sample_date"), all.x = TRUE)
 ```
 
-Compute N:P
+###### Nutrient math!
 ```{r}
+## N to P ratio ##
 dat$N_P <- dat$TN_umol/dat$TP_umol
+
+## Total dissolved N ##
+dat$N_Total_umol <- (dat$NH4_umol + dat$NO2_umol + dat$NO3_umol)
+
+## TN minus dissolved N ##
+dat$TN_minus_umol <- (dat$TN_umol - dat$N_Total)
+
+## TP minus phosphate ##
+dat$TP_minus_umol <- (dat$TP_umol - dat$PO4_umol)
 ```
 
 Add abbreviated names and force order
@@ -118,6 +129,41 @@ fh.monthly <- fh %>%
 
 fh.monthly$date <- as.POSIXct(fh.monthly$date, format = "%m/%d/%Y")
 ```
+
+#### Upwelling
+Taken from La Push Station
+
+```{r}
+upwell <- read.csv("../Data/upwelldaily_1675362669_674.csv", header = TRUE, stringsAsFactors = FALSE)
+```
+
+##### Data managemnet
+
+Rename cols
+```{r}
+upwell <- upwell %>% 
+  rename(OffTrans_m3s = Offshore.Transport..m.3.s.100m.,
+         CummOffTrans_m3s = Cumulative.Offshore.Transport..m.3.s.100m.,
+         AlongTrans_m3s = Along.shore.Transport..m.3.s.100m.,
+         CummAlongTrans_m3s = Cumulative.Along.shore.Transport..m.3.s.100m.)
+```
+
+Define date as POSIXct
+```{r}
+upwell$Date <- as.POSIXct(upwell$Date, format = "%m/%d/%Y")
+```
+
+#### Buoy data
+
+Pull data from different buoys
+
+```{r}
+test <- as.data.frame(buoy_stations())
+buoy.dat <- buoy(dataset = "stdmet", buoyid = 46267, refresh = TRUE)
+
+buoy.dat <- as.data.frame(buoy.dat$data)
+```
+
 
 #### False Bay Creek flow data
 ```{r}
@@ -313,6 +359,7 @@ dev.off()
 
 #### Total Phosphorus
 ```{r}
+## TP ##
 png(filename = "../Figures/TP_Point.png", width = 6.5, height = 8, res = 400, units = "in")
 ggplot(dat %>%
          filter(!station_id %in% c("FBWS_11"))) +
@@ -324,10 +371,53 @@ ggplot(dat %>%
   theme(text = element_text(size = 12)) +
   facet_wrap(~station_abb, scales = "free", nrow = 5, ncol = 2)
 dev.off()
+
+## TP Station 1 and 2 only ##
+png(filename = "../Figures/TP_Point_1_2.png", width = 5, height = 4, res = 400, units = "in")
+ggplot(dat %>%
+         filter(station_id %in% c("FBWS_1", "FBWS_2"))) +
+  geom_point(aes(x = sample_date, y = TP_umol), size = 1.75) +
+  scale_y_continuous(limits = c(0, 10), breaks = seq(0, 10, by = 2)) +
+  scale_x_datetime(date_breaks = "month", date_labels = "%b %y", limits = c(as.POSIXct("2021-04-01 00:00:00"), as.POSIXct("2022-08-01 00:00:00"))) +
+  ylab("Total P (umol)") +
+  xlab("Sample month") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 8)) +
+  theme(text = element_text(size = 12)) +
+  facet_wrap(~station_abb, scales = "free", nrow = 2, ncol = 1)
+dev.off()
+
+## TP minus ##
+png(filename = "../Figures/TP_minus_P_Point.png", width = 5, height = 6, res = 400, units = "in")
+ggplot(dat %>%
+         filter(station_id %in% c("FBWS_1", "FBWS_2"))) +
+  geom_point(aes(x = sample_date, y = TP_minus_umol), size = 1.75) +
+  scale_y_continuous(limits = c(0, 10), breaks = seq(0, 10, by = 2)) +
+  scale_x_datetime(date_breaks = "month", date_labels = "%b %y", limits = c(as.POSIXct("2021-04-01 00:00:00"), as.POSIXct("2022-08-01 00:00:00"))) +
+  ylab("Total P (umol)") +
+  xlab("Sample month") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 8)) +
+  theme(text = element_text(size = 12)) +
+  facet_wrap(~station_abb, scales = "free", nrow = 2, ncol = 1)
+dev.off()
+
+## TP / Phosphate ##
+png(filename = "../Figures/TP_P_Point.png", width = 5, height = 6, res = 400, units = "in")
+ggplot(dat %>%
+         filter(station_id %in% c("FBWS_1", "FBWS_2"))) +
+  geom_point(aes(x = sample_date, y = (TP_umol / PO4_umol)), size = 1.75) +
+  scale_y_continuous(limits = c(0, 8), breaks = seq(0, 8, by = 2)) +
+  scale_x_datetime(date_breaks = "month", date_labels = "%b %y", limits = c(as.POSIXct("2021-04-01 00:00:00"), as.POSIXct("2022-08-01 00:00:00"))) +
+  ylab("Total P (umol)") +
+  xlab("Sample month") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 8)) +
+  theme(text = element_text(size = 12)) +
+  facet_wrap(~station_abb, scales = "free", nrow = 2, ncol = 1)
+dev.off()
 ```
 
 #### Total Nitrogen
 ```{r}
+## TN ##
 png(filename = "../Figures/TN_Point.png", width = 6.5, height = 8, res = 400, units = "in")
 ggplot(dat %>%
         filter(!station_id %in% c("FBWS_11"))) +
@@ -338,6 +428,62 @@ ggplot(dat %>%
   theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 8)) +
   theme(text = element_text(size = 12)) +
   facet_wrap(~station_abb, scales = "free", nrow = 5, ncol = 2)
+dev.off()
+
+## TN  Station 1 and 2 ##
+png(filename = "../Figures/TN_Point_1_2.png", width = 5, height = 6, res = 400, units = "in")
+ggplot(dat %>%
+        filter(station_id %in% c("FBWS_1", "FBWS_2"))) +
+  geom_point(aes(x = sample_date, y = TN_umol), size = 1.75) +
+  scale_y_continuous(limits = function(x){c(0, max(0.1, x) + max(x * 0.2))}) +
+  scale_x_datetime(date_breaks = "month", date_labels = "%b %y", limits = c(as.POSIXct("2021-04-01 00:00:00"), as.POSIXct("2022-08-01 00:00:00"))) +
+  ylab("Total N (umol)") +
+  xlab("Sample month") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 8)) +
+  theme(text = element_text(size = 12)) +
+  facet_wrap(~station_abb, scales = "free", nrow = 2, ncol = 1)
+dev.off()
+
+## N members ##
+png(filename = "../Figures/N_Point.png", width = 5, height = 6, res = 400, units = "in")
+ggplot(dat %>%
+         filter(station_id %in% c("FBWS_1", "FBWS_2"))) +
+  geom_point(aes(x = sample_date, y = N_Total_umol), size = 1.75) +
+  scale_y_continuous(limits = function(x){c(0, max(0.1, x) + max(x * 0.2))}) +
+  scale_x_datetime(date_breaks = "month", date_labels = "%b %y", limits = c(as.POSIXct("2021-04-01 00:00:00"), as.POSIXct("2022-08-01 00:00:00"))) +
+  ylab("N members (umol)") +
+  xlab("Sample month") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 8)) +
+  theme(text = element_text(size = 12)) +
+  facet_wrap(~station_abb, scales = "free", nrow = 2, ncol = 1)
+dev.off()
+
+## TN minus ##
+png(filename = "../Figures/TN_minus_N_Point.png", width = 5, height = 6, res = 400, units = "in")
+ggplot(dat %>%
+         filter(station_id %in% c("FBWS_1", "FBWS_2"))) +
+  geom_point(aes(x = sample_date, y = TN_minus_umol), size = 1.75) +
+  scale_y_continuous(limits = function(x){c(0, max(0.1, x) + max(x * 0.2))}) +
+  scale_x_datetime(date_breaks = "month", date_labels = "%b %y", limits = c(as.POSIXct("2021-04-01 00:00:00"), as.POSIXct("2022-08-01 00:00:00"))) +
+  ylab("TN - N members (umol)") +
+  xlab("Sample month") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 8)) +
+  theme(text = element_text(size = 12)) +
+  facet_wrap(~station_abb, scales = "free", nrow = 2, ncol = 1)
+dev.off()
+
+## TN / N members ##
+png(filename = "../Figures/TN_N_Point.png", width = 5, height = 6, res = 400, units = "in")
+ggplot(dat %>%
+         filter(station_id %in% c("FBWS_1", "FBWS_2"))) +
+  geom_point(aes(x = sample_date, y = (TN_umol / N_Total_umol)), size = 1.75) +
+  scale_y_continuous(limits = function(x){c(0, max(0.1, x) + max(x * 0.2))}) +
+  scale_x_datetime(date_breaks = "month", date_labels = "%b %y", limits = c(as.POSIXct("2021-04-01 00:00:00"), as.POSIXct("2022-08-01 00:00:00"))) +
+  ylab("TN / N members") +
+  xlab("Sample month") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 8)) +
+  theme(text = element_text(size = 12)) +
+  facet_wrap(~station_abb, scales = "free", nrow = 2, ncol = 1)
 dev.off()
 ```
 
@@ -370,6 +516,30 @@ ggplot(dat %>%
   theme(text = element_text(size = 12)) +
   facet_wrap(~station_abb, scales = "free", nrow = 2, ncol = 1)
 dev.off()
+
+png(filename = "../Figures/Phos_FBWS_1.png", width = 5, height = 4, res = 400, units = "in")
+ggplot(dat %>% 
+         filter(station_id %in% c("FBWS_1"))) +
+  geom_point(aes(x = sample_date, y = PO4_umol), size = 2) +
+  scale_y_continuous(limits = c(0, 10), breaks = seq(0, 10, by = 2)) +
+  scale_x_datetime(date_breaks = "month", date_labels = "%b %y", limits = c(as.POSIXct("2021-04-01 00:00:00"), as.POSIXct("2022-08-01 00:00:00"))) +
+  ylab("Phosphate (umol)") +
+  xlab("Sample month") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 8)) +
+  theme(text = element_text(size = 12))
+dev.off()
+
+png(filename = "../Figures/TP_Phos_FBWS_1.png", width = 5, height = 4, res = 400, units = "in")
+ggplot(dat %>% 
+         filter(station_id %in% c("FBWS_1"))) +
+  geom_point(aes(x = sample_date, y = (TP_umol - PO4_umol)), size = 2) +
+  scale_y_continuous(limits = c(0, 10), breaks = seq(0, 10, by = 2)) +
+  scale_x_datetime(date_breaks = "month", date_labels = "%b %y", limits = c(as.POSIXct("2021-04-01 00:00:00"), as.POSIXct("2022-08-01 00:00:00"))) +
+  ylab("TP - Phosphate (umol)") +
+  xlab("Sample month") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 8)) +
+  theme(text = element_text(size = 12))
+dev.off()
 ```
 
 #### Nitrate
@@ -385,6 +555,18 @@ ggplot(dat %>%
   theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 8)) +
   theme(text = element_text(size = 12)) +
   facet_wrap(~station_abb, nrow = 2, ncol = 1)
+dev.off()
+
+png(filename = "../Figures/Nitrate_FBWS_1.png", width = 5, height = 4, res = 400, units = "in")
+ggplot(dat %>% 
+         filter(station_id %in% "FBWS_1")) +
+  geom_point(aes(x = sample_date, y = NO3_umol), size = 2) +
+  scale_y_continuous(limits = c(0, 25), breaks = seq(0, 25, by = 5)) +
+  scale_x_datetime(date_breaks = "month", date_labels = "%b %y", limits = c(as.POSIXct("2021-04-01 00:00:00"), as.POSIXct("2022-08-01 00:00:00"))) +
+  ylab("Nitrate (umol)") +
+  xlab("Sample month") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 8)) +
+  theme(text = element_text(size = 12))
 dev.off()
 ```
 
@@ -460,6 +642,21 @@ ggplot(fh.monthly) +
   theme(text = element_text(size = 10), axis.text.x = element_text(angle = 45, hjust=1))
 dev.off()
 ```
+
+#### Upwelling
+```{r}
+png(filename = "../Figures/LaPush_Upwelling.png", width = 6, height = 4, res = 400, units = "in")
+ggplot(upwell) +
+  geom_point(aes(x = Date, y = OffTrans_m3s), size = 0.75) +
+  geom_hline(aes(yintercept = 0), color = "#8F8F8F") +
+  scale_y_continuous(limits = c(-1000, 250), breaks = seq(-1000, 250, by = 100)) +
+  scale_x_datetime(date_breaks = "month", date_labels = "%b %y") +
+  ylab("Offshore Transport Index") +
+  xlab("Date") +
+  theme(text = element_text(size = 12), axis.text.x = element_text(angle = 45, hjust=1))
+dev.off()
+```
+
 
 #### Combo plots
 ```{r}
