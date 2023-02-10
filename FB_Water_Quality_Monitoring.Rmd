@@ -150,16 +150,20 @@ fh.monthly.sum$date <- as.POSIXct(fh.monthly.sum$date, format = "%Y-%m-%d")
 Taken from La Push Station
 
 ```{r}
-upwell <- read.csv("../Data/upwelldaily_1675362669_674.csv", header = TRUE, stringsAsFactors = FALSE)
+upwell1 <- read.csv("../Data/upwelldaily_1675362669_674.csv", header = TRUE, stringsAsFactors = FALSE)
 upwell2 <- read.csv("../Data/upwelldaily_1675984913_724.csv", header = TRUE, stringsAsFactors = FALSE)
 upwell3 <- read.csv("../Data/upwelldaily_1675998516_201.csv", header = TRUE, stringsAsFactors = FALSE)
+upwell4 <- read.csv("../Data/upwelldaily_1676052104_490.csv", header = TRUE, stringsAsFactors = FALSE)
+upwell5 <- read.csv("../Data/upwelldaily_1676052115_208.csv", header = TRUE, stringsAsFactors = FALSE)
+upwell6 <- read.csv("../Data/upwelldaily_1676052198_278.csv", header = TRUE, stringsAsFactors = FALSE)
+upwell7 <- read.csv("../Data/upwelldaily_1676053516_536.csv", header = TRUE, stringsAsFactors = FALSE)
 ```
 
 ##### Data managemnet
 
 Rename cols
 ```{r}
-upwell <- bind_rows(upwell, upwell2, upwell3)
+upwell <- bind_rows(upwell1, upwell2, upwell3, upwell4, upwell5, upwell6, upwell7)
 
 upwell <- upwell %>% 
   rename(OffTrans_m3s = Offshore.Transport..m.3.s.100m.,
@@ -844,16 +848,16 @@ ggplot(upwell) +
   theme(text = element_text(size = 12), axis.text.x = element_text(angle = 45, hjust=1))
 dev.off()
 
-png(filename = "../Figures/LaPush_Upwell_2016_2022.png", width = 11, height = 4, res = 400, units = "in")
+png(filename = "../Figures/LaPush_Upwell_2010_2022.png", width = 11, height = 4, res = 400, units = "in")
 ggplot(upwell.month) +
   geom_col(aes(x = date, y = mean_OffTrans_m3s), size = 1) +
-  geom_errorbar(aes(x = date, ymin = mean_OffTrans_m3s - sd_OffTrans_m3s, ymax = mean_OffTrans_m3s + sd_OffTrans_m3s), width = 0) +
   geom_hline(aes(yintercept = 0), color = "#8F8F8F") +
-  #scale_y_continuous(limits = c(-1000, 250), breaks = seq(-1000, 250, by = 100)) +
-  scale_x_datetime(date_breaks = "month", date_labels = "%b %y") +
-  ylab("Mean Offshore Transport Index (+/- SD)") +
+  scale_y_continuous(limits = c(-200, 50), breaks = seq(-200, 50, by = 50)) +
+  scale_x_datetime(date_breaks = "year", date_labels = "%Y", minor_breaks = "month") +
+  ylab("Mean Offshore Transport Index") +
   xlab("Date") +
-  theme(text = element_text(size = 10), axis.text.x = element_text(angle = 45, hjust=1))
+  theme(text = element_text(size = 10), axis.text.x = element_text(angle = 45, hjust=1)) +
+  theme(panel.grid.major = element_line(color = "#D6D6D6", size = 0.5))
 dev.off()
 ```
 
