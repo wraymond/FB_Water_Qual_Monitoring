@@ -151,22 +151,39 @@ Taken from La Push Station
 
 ```{r}
 upwell <- read.csv("../Data/upwelldaily_1675362669_674.csv", header = TRUE, stringsAsFactors = FALSE)
+upwell2 <- read.csv("../Data/upwelldaily_1675984913_724.csv", header = TRUE, stringsAsFactors = FALSE)
+upwell3 <- read.csv("../Data/upwelldaily_1675998516_201.csv", header = TRUE, stringsAsFactors = FALSE)
 ```
 
 ##### Data managemnet
 
 Rename cols
 ```{r}
+upwell <- bind_rows(upwell, upwell2, upwell3)
+
 upwell <- upwell %>% 
   rename(OffTrans_m3s = Offshore.Transport..m.3.s.100m.,
          CummOffTrans_m3s = Cumulative.Offshore.Transport..m.3.s.100m.,
          AlongTrans_m3s = Along.shore.Transport..m.3.s.100m.,
          CummAlongTrans_m3s = Cumulative.Along.shore.Transport..m.3.s.100m.)
+
+upwell$Date <- as.POSIXct(upwell$Date, format = "%m/%d/%Y")
+
+upwell.month <- upwell %>% 
+  mutate(month = format(Date, "%m"), year = format(Date, "%Y"), day = format(Date, "%d")) %>% 
+  group_by(month, year) %>% 
+  summarise(mean_OffTrans_m3s = mean(OffTrans_m3s),
+            sd_OffTrans_m3s = sd(OffTrans_m3s)) %>% 
+  mutate(day = 1) %>% 
+  mutate(date = make_date(year, month, day)) %>% 
+  mutate(date = format(as.POSIXct(date, format = "%m/%d/%Y %H:%M:%S"), format = "%m/%d/%Y"))
+  
 ```
 
 Define date as POSIXct
 ```{r}
 upwell$Date <- as.POSIXct(upwell$Date, format = "%m/%d/%Y")
+upwell.month$date <- as.POSIXct(upwell.month$date, format = "%m/%d/%Y")
 ```
 
 #### Buoy data
@@ -818,13 +835,25 @@ dev.off()
 ```{r}
 png(filename = "../Figures/LaPush_Upwelling.png", width = 5, height = 4, res = 400, units = "in")
 ggplot(upwell) +
-  geom_point(aes(x = Date, y = OffTrans_m3s), size = 0.75) +
+  geom_point(aes(x = Date, y = OffTrans_m3s), size = 1) +
   geom_hline(aes(yintercept = 0), color = "#8F8F8F") +
   scale_y_continuous(limits = c(-1000, 250), breaks = seq(-1000, 250, by = 100)) +
   scale_x_datetime(date_breaks = "month", date_labels = "%b %y") +
   ylab("Offshore Transport Index") +
   xlab("Date") +
   theme(text = element_text(size = 12), axis.text.x = element_text(angle = 45, hjust=1))
+dev.off()
+
+png(filename = "../Figures/LaPush_Upwell_2016_2022.png", width = 11, height = 4, res = 400, units = "in")
+ggplot(upwell.month) +
+  geom_col(aes(x = date, y = mean_OffTrans_m3s), size = 1) +
+  geom_errorbar(aes(x = date, ymin = mean_OffTrans_m3s - sd_OffTrans_m3s, ymax = mean_OffTrans_m3s + sd_OffTrans_m3s), width = 0) +
+  geom_hline(aes(yintercept = 0), color = "#8F8F8F") +
+  #scale_y_continuous(limits = c(-1000, 250), breaks = seq(-1000, 250, by = 100)) +
+  scale_x_datetime(date_breaks = "month", date_labels = "%b %y") +
+  ylab("Mean Offshore Transport Index (+/- SD)") +
+  xlab("Date") +
+  theme(text = element_text(size = 10), axis.text.x = element_text(angle = 45, hjust=1))
 dev.off()
 ```
 
@@ -878,24 +907,24 @@ dev.off()
 On the ground
 ```{r}
 ## Plots of Means ##
-png(filename = "../Figures/Ulva_mass.png", width = 5, height = 4, res = 400, units = "in")
+png(filename = "../Figures/Ulva_mass.png", width = 4.5, height = 3, res = 400, units = "in")
 ggplot(ul.sum) +
-  geom_point(aes(x = date, y = mean_ul_mass_gmsq), size = 2) +
+  geom_point(aes(x = date, y = mean_ul_mass_gmsq), size = 1.75) +
   geom_errorbar(aes(x = date, ymin = mean_ul_mass_gmsq - sd_ul_mass_gmsq, ymax = mean_ul_mass_gmsq + sd_ul_mass_gmsq), width = 0) +
   scale_y_continuous(limits = c(-30, 180), breaks = seq(-30, 180, by = 30))  +
   scale_x_datetime(date_breaks = "month", date_labels = "%b %y", limits = c(as.POSIXct("2021-04-01"), as.POSIXct("2023-01-01"))) +
-  ylab("Ulva mass (g/m sq)") +
+  ylab("Ulva mass (g/msq)") +
   xlab("Month") +
   theme(text = element_text(size = 12), axis.text.x = element_text(angle = 45, hjust=1))
 dev.off()
 
 ## Box plot ##
-png(filename = "../Figures/Ulva_mass_box.png", width = 5, height = 4, res = 400, units = "in")
+png(filename = "../Figures/Ulva_mass_box.png", width = 4.5, height = 3, res = 400, units = "in")
 ggplot(ul) +
   geom_boxplot(aes(date, y = dry_mass_gmsq, group = date)) +
   scale_y_continuous(limits = c(0, 300), breaks = seq(0, 300, by = 50))  +
   scale_x_datetime(date_breaks = "month", date_labels = "%b %y", limits = c(as.POSIXct("2021-04-01"), as.POSIXct("2022-09-01"))) +
-  ylab("Ulva mass (g/m sq)") +
+  ylab("Ulva spp. mass (g/msq)") +
   xlab("Month") +
   theme(text = element_text(size = 12), axis.text.x = element_text(angle = 45, hjust=1))
 dev.off()
@@ -904,14 +933,16 @@ dev.off()
 Drone
 ```{r}
 mean(ul.drone$ul_percent_cover)
-png(filename = "../Figures/Ulva_prop_drone.png", width = 5, height = 4, res = 400, units = "in")
+
+png(filename = "../Figures/Ulva_prop_drone.png", width = 4.5, height = 3, res = 400, units = "in")
 ggplot(ul.drone) +
-  geom_point(aes(x = sample_date, y = ul_percent_cover), size = 2) +
+  geom_col(aes(x = sample_date, y = ul_percent_cover), size = 1.75) +
   scale_y_continuous(limits = c(0, 0.8), breaks = seq(0, 0.8, by = 0.2))  +
   scale_x_datetime(date_breaks = "month", date_labels = "%b %y", limits = c(as.POSIXct("2021-04-01"), as.POSIXct("2023-01-01"))) +
-  ylab("Proportion Ulva") +
+  ylab("Proportion Ulva spp.") +
   xlab("Month") +
-  theme(text = element_text(size = 12), axis.text.x = element_text(angle = 45, hjust=1))
+  theme(text = element_text(size = 12), axis.text.x = element_text(angle = 45, hjust=1)) +
+  annotate(geom = "text", x = as.POSIXct("2022-09-01"), y = 0.67, label = "*")
 dev.off()
 ```
 
