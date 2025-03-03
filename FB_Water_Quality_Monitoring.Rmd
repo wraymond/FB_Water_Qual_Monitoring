@@ -103,6 +103,8 @@ dat <- dat %>%
   ))
 
 dat$station_abb <- factor(dat$station_abb, levels = c("8:UZ - Inlet", "9:SJVC - Upper", "11:Emm - Culvert", "10:Emm - Wetland", "6:Emm - Outlet", "7:LZ - Lower Dam", "4:FBC - Lower",  "5:SJVC - Lower", "3:FBC - Bailer Hill", "2:FBC - Mouth", "1:FB - Nearshore"))
+
+
 ```
 
 #### Friday Harbor Airport data
@@ -144,6 +146,10 @@ fh.monthly.sum$year <- c(rep(2021, 12), rep(2022, 12))
 fh.monthly.sum$day <- rep(1, 24)
 fh.monthly.sum$date <- make_date(fh.monthly.sum$year, fh.monthly.sum$month, fh.monthly.sum$day)
 fh.monthly.sum$date <- as.POSIXct(fh.monthly.sum$date, format = "%Y-%m-%d")
+
+fh.monthly.sum$sd_max_monthly <- fh.monthly.sum$mean_tot_precip + fh.monthly.sum$sd_tot_precip
+fh.monthly.sum$sd_min_monthly <- fh.monthly.sum$mean_tot_precip - fh.monthly.sum$sd_tot_precip
+fh.monthly.sum$sd_min_monthly <- ifelse(fh.monthly.sum$sd_min_monthly < 0, 0, fh.monthly.sum$sd_min_monthly)
 ```
 
 #### Upwelling
@@ -335,8 +341,75 @@ ul.drone <- ul.drone %>%
 
 #### Temperature
 
-##### Point
+```{r}
+p.temp <- ggplot(dat %>%
+         filter(station_id %in% c("FBWS_1", "FBWS_2", "FBWS_3"))) +
+  geom_point(aes(x = sample_date, y = temp_c, shape = station_abb, color = station_abb), size = 1.5) +
+  scale_shape_manual(values = c(15, 17, 16), labels = c("Bailer", "Mouth", "Nearshore")) +
+  scale_color_manual(values = c("#D41E58", "#678F22", "#14409E")) +
+  labs(color = "Station") +
+  theme(legend.position = "none") +
+  scale_y_continuous(limits = c(0, 24), breaks = seq(0, 24, by = 4))  +
+  scale_x_datetime(date_breaks = "month", date_labels = "%b %y", limits = c(as.POSIXct("2021-03-30"), as.POSIXct("2022-09-01"))) +
+  ylab("Temperature (°C)") +
+  xlab("Month - Year") +
+  theme(text = element_text(size = 10), axis.text.x = element_text(angle = 45, hjust = 1)) +
+  theme(plot.margin = unit(c(0, 0, 0 , 0.55), "cm"))
+```
 
+
+#### Mouth - Nearshore correlations
+Calculate pearson correlation between nutrient values between mouth and nearshore stations
+
+```{r}
+dat.cor <- data.frame(sample_date = unique(dat$sample_date),
+                      PO4 = sapply(cor(dat$PO4_umol[dat$station_id == "FBWS_1"], dat$PO4_umol[dat$station_id == "FBWS_2"], method = "pearson")))
+
+dat.redu <- dat %>% 
+  filter(station_id %in% c("FBWS_1", "FBWS_2"))
+
+
+cor(dat.redu[1:20, 12], dat.redu[21:40, 12], method = "pearson")
+
+dar.cor <- dat %>% 
+  filter(station_id %in% c("FBWS_1", "FBWS_2")) %>% 
+  summarise(po4 = cor(PO4_umol, PO4_umol, method = "pearson"),
+            no3 = cor(NO3_umol, NO3_umol, method = "pearson"),
+            no2 = cor(NO2_umol, NO2_umol, method = "pearson"),
+            nh4 = cor(NH4_umol, NH4_umol, method = "pearson"))
+
+cor(dat.redu$PO4_umol[dat.redu$station_id == "FBWS_1"], dat.redu$PO4_umol[dat.redu$station_id == "FBWS_2"])
+cor(dat.redu$NO3_umol[dat.redu$station_id == "FBWS_1"], dat.redu$NO3_umol[dat.redu$station_id == "FBWS_2"])
+cor(dat.redu$NO2_umol[dat.redu$station_id == "FBWS_1"], dat.redu$NO2_umol[dat.redu$station_id == "FBWS_2"])
+cor(dat.redu$NH4_umol[dat.redu$station_id == "FBWS_1"], dat.redu$NH4_umol[dat.redu$station_id == "FBWS_2"])
+
+dat.cor <- data.frame(sample_date = unique(dat$sample_date),
+                      PO4_1 = dat.redu$PO4_umol[dat.redu$station_id == "FBWS_1"],
+                      PO4_2 = dat.redu$PO4_umol[dat.redu$station_id == "FBWS_2"],
+                      NO3_1 = dat.redu$NO3_umol[dat.redu$station_id == "FBWS_1"],
+                      NO3_2 = dat.redu$NO3_umol[dat.redu$station_id == "FBWS_2"],
+                      NO2_1 = dat.redu$NO2_umol[dat.redu$station_id == "FBWS_1"],
+                      NO2_2 = dat.redu$NO2_umol[dat.redu$station_id == "FBWS_2"],
+                      NH4_1 = dat.redu$NH4_umol[dat.redu$station_id == "FBWS_1"],
+                      NH4_2 = dat.redu$NH4_umol[dat.redu$station_id == "FBWS_2"]
+                      )
+
+dat.cor <- data.frame(expand.grid(unique(dat$sample_date), c("Phosphate", "Nitrate", "Nitrite", "Ammonium")))
+dat.cor$conc_1 <- c(dat.redu[21:40, 12], dat.redu[21:40, 14], dat.redu[21:40, 15], dat.redu[21:40, 16])
+dat.cor$conc_2 <- c(dat.redu[1:20, 12], dat.redu[1:20, 14], dat.redu[1:20, 15], dat.redu[1:20, 16])
+
+png(filename = "../Figures/Nuts_cor.png", width = 5, height = 5, res = 400, units = "in")
+ggplot(dat.cor) +
+  geom_point(aes(x = conc_1, y = conc_2)) +
+  xlab("Nearshore (\u00b5mol)") +
+  ylab("Mouth (\u00b5mol)") +
+  facet_wrap(~Var2, nrow = 2, ncol = 2, scales = "free")
+dev.off()
+```
+
+
+
+#### Point
 Nearshore
 ```{r echo=FALSE}
 ## Point ##
@@ -392,15 +465,30 @@ dev.off()
 png(filename = "../Figures/Sal_Point.png", width = 3.5, height = 4, res = 400, units = "in")
 ggplot(dat %>%
          filter(station_id %in% c("FBWS_1", "FBWS_2"))) +
-  geom_point(aes(x = sample_date, y = sal_ppt), size = 1) +
-  scale_y_continuous(limits = c(0, 35), breaks = seq(0, 35, by = 5))  +
-  scale_x_datetime(date_breaks = "month", date_labels = "%b %y") +
+  geom_point(aes(x = sample_date, y = sal_ppt, shape = station_abb), size = 1.5) +
+  scale_shape_manual(values = c(17, 16), labels = c("Mouth", "Nearshore")) +
+  labs(color = "Station") +
+  theme(legend.position = "none") +
+  scale_y_continuous(limits = c(0, 36), breaks = seq(0, 36, by = 4))  +
+  scale_x_datetime(date_breaks = "month", date_labels = "%b %y", limits = c(as.POSIXct("2021-03-30"), as.POSIXct("2022-09-01"))) +
   ylab("Salinity (ppt)") +
-  xlab("Sample month") +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 8)) +
-  theme(text = element_text(size = 12)) +
-  facet_wrap(~station_abb, nrow = 2, ncol = 1)
+  xlab("Month - Year") +
+  theme(text = element_text(size = 10), axis.text.x = element_text(angle = 45, hjust = 1))
 dev.off()
+
+p.sal <- ggplot(dat %>%
+         filter(station_id %in% c("FBWS_1", "FBWS_2"))) +
+  geom_point(aes(x = sample_date, y = sal_ppt, shape = station_abb, color = station_abb), size = 1.5) +
+  scale_shape_manual(values = c(17, 16), labels = c("Mouth", "Nearshore")) +
+  scale_color_manual(values = c( "#678F22", "#14409E")) +
+  labs(color = "Station") +
+  theme(legend.position = "none") +
+  scale_y_continuous(limits = c(0, 36), breaks = seq(0, 36, by = 4))  +
+  scale_x_datetime(date_breaks = "month", date_labels = "%b %y", limits = c(as.POSIXct("2021-03-30"), as.POSIXct("2022-09-01"))) +
+  ylab("Salinity (ppt)") +
+  xlab("") +
+  theme(text = element_text(size = 10), axis.text.x = element_text(angle = 45, hjust = 1)) +
+  theme(plot.margin = unit(c(0, 0, 0 , 0.55), "cm"))
 ```
 
 #### Total Phosphorus
@@ -459,6 +547,24 @@ ggplot(dat %>%
   theme(text = element_text(size = 12)) +
   facet_wrap(~station_abb, scales = "free", nrow = 3, ncol = 1)
 dev.off()
+
+ann_text3 <- data.frame(sample_date = c(as.POSIXct("2022-08-16 00:00:00"), as.POSIXct("2021-08-23 00:00:00"), as.POSIXct("2021-08-23 00:00:00")),
+                       TP_umol = c(NA, 20, NA),
+                       station_abb = factor(c("3:FBC - Bailer Hill", "2:FBC - Mouth", "1:FB - Nearshore"), levels = c("3:FBC - Bailer Hill","2:FBC - Mouth", "1:FB - Nearshore")),
+                       lab = c("", "42.7", ""))
+
+p.tp <- ggplot(dat %>%
+         filter(station_id %in% c("FBWS_1", "FBWS_2", "FBWS_3"))) +
+  geom_point(aes(x = sample_date, y = TP_umol, shape = station_abb, color = station_abb), size = 1.5) +
+  scale_shape_manual(values = c(15, 17, 16), labels = c("Bailer", "Mouth", "Nearshore")) +
+  scale_color_manual(values = c("#D41E58", "#678F22", "#14409E")) +
+  scale_y_continuous(limits = c(0, 20), breaks = seq(0, 20, by = 5)) +
+  scale_x_datetime(date_breaks = "month", date_labels = "%b %y", limits = c(as.POSIXct("2021-03-30"), as.POSIXct("2022-09-01"))) +
+  ylab("Total P (\u00b5mol)") +
+  xlab("") +
+  theme(legend.position = "none") +
+  geom_text(aes(x = sample_date, y = TP_umol), label = c("", "42.7", ""), data = ann_text3, size = 3) +
+  theme(text = element_text(size = 10), axis.text.x = element_text(angle = 45, hjust = 1))
 
 ## TP minus ##
 png(filename = "../Figures/TP_minus_P_Point.png", width = 3.25, height = 4, res = 400, units = "in")
@@ -532,6 +638,24 @@ ggplot(dat %>%
   theme(text = element_text(size = 12)) +
   facet_wrap(~station_abb, scales = "free", nrow = 3, ncol = 1)
 dev.off()
+
+ann_text4 <- data.frame(sample_date = c(as.POSIXct("2021-08-16 00:00:00"), as.POSIXct("2021-08-16 00:00:00"), as.POSIXct("2021-08-16 00:00:00")),
+                       TN_umol = c(NA, 300, NA),
+                       station_abb = factor(c("3:FBC - Bailer Hill", "2:FBC - Mouth", "1:FB - Nearshore"), levels = c("3:FBC - Bailer Hill","2:FBC - Mouth", "1:FB - Nearshore")),
+                       lab = c("", "606.7", ""))
+
+p.tn <- ggplot(dat %>%
+         filter(station_id %in% c("FBWS_1", "FBWS_2", "FBWS_3"))) +
+  geom_point(aes(x = sample_date, y = TN_umol, shape = station_abb, color = station_abb), size = 1.5) +
+  scale_shape_manual(values = c(15, 17, 16), labels = c("Bailer", "Mouth", "Nearshore")) +
+  scale_color_manual(values = c("#D41E58", "#678F22", "#14409E")) +
+  scale_y_continuous(limits = c(0, 300), breaks = seq(0, 300, by = 50)) +
+  scale_x_datetime(date_breaks = "month", date_labels = "%b %y", limits = c(as.POSIXct("2021-03-30"), as.POSIXct("2022-09-01"))) +
+  ylab("Total N (\u00b5mol)") +
+  xlab("Month - Year") +
+  theme(legend.position = "none") +
+  geom_text(aes(x = sample_date, y = TN_umol), label = c("", "606.7", ""), data = ann_text4, size = 3) +
+  theme(text = element_text(size = 10), axis.text.x = element_text(angle = 45, hjust = 1))
 
 ## N members ##
 png(filename = "../Figures/N_Point.png", width = 5, height = 6, res = 400, units = "in")
@@ -626,7 +750,7 @@ dev.off()
 #### Phosphate
 ```{r}
 ann_text <- data.frame(sample_date = c(as.POSIXct("2021-08-23 00:00:00"), as.POSIXct("2021-08-23 00:00:00")),
-                       PO4_umol = c(3.9, NA),
+                       PO4_umol = c(4, NA),
                        station_abb = factor(c("2:FBC - Mouth", "1:FB - Nearshore"), levels = c("2:FBC - Mouth", "1:FB - Nearshore")),
                        lab = c("23.2", ""))
 
@@ -643,6 +767,22 @@ ggplot(dat %>%
   facet_wrap(~station_abb, nrow = 2, ncol = 1) +
   geom_text(aes(x = sample_date, y = PO4_umol), label = c("23.2", ""), data = ann_text, size = 3)
 dev.off()
+
+p.po4 <- ggplot(dat %>% 
+         filter(station_id %in% c("FBWS_1", "FBWS_2"))) +
+  geom_point(aes(x = sample_date, y = PO4_umol, shape = station_abb, color = station_abb), size = 1.5) +
+  scale_shape_manual(values = c(17, 16), labels = c("Mouth", "Nearshore")) +
+  labs(color = "Station") +
+  scale_color_manual(values = c( "#678F22", "#14409E")) +
+  theme(legend.position = "none") +
+  scale_y_continuous(limits = c(0, 4), breaks = seq(0, 4, by = 1)) +
+  scale_x_datetime(date_breaks = "month", date_labels = "%b %y", limits = c(as.POSIXct("2021-04-01 00:00:00"), as.POSIXct("2022-12-01 00:00:00"))) +
+  ylab("Phosphate (\u00b5mol)") +
+  xlab("") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  theme(text = element_text(size = 10)) +
+  geom_text(aes(x = sample_date, y = PO4_umol), label = c("23.2", ""), data = ann_text, size = 3) +
+  theme(plot.margin = unit(c(0, 0, 0 , 0.55), "cm"))
 
 png(filename = "../Figures/Phos_FBWS_1.png", width = 5, height = 4, res = 400, units = "in")
 ggplot(dat %>% 
@@ -684,6 +824,21 @@ ggplot(dat %>%
   facet_wrap(~station_abb, nrow = 2, ncol = 1)
 dev.off()
 
+p.no3 <- ggplot(dat %>% 
+         filter(station_id %in% c("FBWS_1", "FBWS_2"))) +
+  geom_point(aes(x = sample_date, y = NO3_umol, shape = station_abb, color = station_abb), size = 1.5) +
+  scale_shape_manual(values = c(17, 16), labels = c("Mouth", "Nearshore")) +
+  scale_color_manual(values = c( "#678F22", "#14409E")) +
+  labs(color = "Station") +
+  theme(legend.position = "none") +
+  scale_y_continuous(limits = c(0, 30), breaks = seq(0, 30, by = 5)) +
+  scale_x_datetime(date_breaks = "month", date_labels = "%b %y", limits = c(as.POSIXct("2021-04-01 00:00:00"), as.POSIXct("2022-12-01 00:00:00"))) +
+  ylab("Nitrate (\u00b5mol)") +
+  xlab("") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  theme(text = element_text(size = 10)) +
+  theme(plot.margin = unit(c(0, 0, 0 , 0.55), "cm"))
+
 png(filename = "../Figures/Nitrate_FBWS_1.png", width = 5, height = 4, res = 400, units = "in")
 ggplot(dat %>% 
          filter(station_id %in% "FBWS_1")) +
@@ -711,6 +866,21 @@ ggplot(dat %>%
   theme(text = element_text(size = 12)) +
   facet_wrap(~station_abb, nrow = 2, ncol = 1)
 dev.off()
+
+p.no2 <- ggplot(dat %>% 
+         filter(station_id %in% c("FBWS_1", "FBWS_2"))) +
+  geom_point(aes(x = sample_date, y = NO2_umol, shape = station_abb, color = station_abb), size = 1.5) +
+  scale_shape_manual(values = c(17, 16), labels = c("Mouth", "Nearshore")) +
+  scale_color_manual(values = c( "#678F22", "#14409E")) +
+  labs(color = "Station") +
+  theme(legend.position = "none") +
+  scale_y_continuous(limits = c(0, 1.2), breaks = seq(0, 1.2, by = 0.2)) +
+  scale_x_datetime(date_breaks = "month", date_labels = "%b %y", limits = c(as.POSIXct("2021-04-01 00:00:00"), as.POSIXct("2022-12-01 00:00:00"))) +
+  ylab("Nitrite (\u00b5mol)") +
+  xlab("") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  theme(text = element_text(size = 10)) +
+  theme(plot.margin = unit(c(0, 0, 0 , 0.55), "cm"))
 
 ggplot(dat %>% 
          filter(station_id %in% c("FBWS_1", "FBWS_2"))) +
@@ -755,6 +925,27 @@ ggplot(dat %>%
   facet_wrap(~station_abb, scales = "free", nrow = 2, ncol = 1)
 dev.off()
 
+ann_text2 <- data.frame(sample_date = c(as.POSIXct("2021-08-16 00:00:00"), as.POSIXct("2021-10-15 00:00:00")),
+                       NH4_umol = c(25, 25),
+                       station_abb = factor(c("2:FBC - Mouth", "2:FBC - Mouth")),
+                       lab = c("324.6", "68.8"))
+
+p.nh4 <- ggplot(dat %>% 
+         filter(station_id %in% c("FBWS_1", "FBWS_2"))) +
+  geom_point(aes(x = sample_date, y = NH4_umol, shape = station_abb, color = station_abb), size = 1.5) +
+  scale_shape_manual(values = c(17, 16), labels = c("Mouth", "Nearshore")) +
+  scale_color_manual(values = c( "#678F22", "#14409E")) +
+  labs(color = "Station") +
+  theme(legend.position = "none") +
+  scale_y_continuous(limits = c(0, 25), breaks = seq(0, 25, by = 5)) +
+  scale_x_datetime(date_breaks = "month", date_labels = "%b %y", limits = c(as.POSIXct("2021-04-01 00:00:00"), as.POSIXct("2022-12-01 00:00:00"))) +
+  ylab("Ammonium (\u00b5mol)") +
+  xlab("Month - Year") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  theme(text = element_text(size = 10)) +
+  geom_text(aes(x = sample_date, y = NH4_umol), label = c("324.6", "68.8"), data = ann_text2, size = 3) +
+  theme(plot.margin = unit(c(0, 0, 0 , 0.55), "cm"))
+
 png(filename = "../Figures/Ammon_Point_log.png", width = 3.25, height = 4, res = 400, units = "in")
 ggplot(dat %>% 
          filter(station_id %in% c("FBWS_1", "FBWS_2"))) +
@@ -772,16 +963,28 @@ dev.off()
 #### Precipitation
 ```{r}
 ## Sampling window ##
-png(filename = "../Figures/Precip_Airport_Samp.png", width = 5, height = 4, res = 400, units = "in")
+png(filename = "../Figures/Precip_Airport_Samp.png", width = 4.5, height = 4, res = 400, units = "in")
 ggplot(fh.monthly) +
-  geom_col(aes(x = date, y = total.precip), fill = "#CCCCCC") +
-  geom_line(data = fh.monthly.sum, aes(x = date, y = mean_tot_precip), size = 1, color = "#1E5CD1") +
-  scale_y_continuous(limits = c(0, 250), breaks = seq(0, 250, by = 50), sec.axis = sec_axis(trans = ~./24.5, name = "Total precipitation (in)")) +
-  scale_x_datetime(date_breaks = "month", date_labels = "%b %y", limits = c(as.POSIXct("2021-04-01"), as.POSIXct("2023-01-01"))) +
+  geom_col(aes(x = date, y = total.precip), fill = "#C1C1CC") +
+    geom_errorbar(data = fh.monthly.sum, aes(x = date, ymin = sd_min_monthly, ymax = sd_max_monthly), width = 0) +
+  geom_point(data = fh.monthly.sum, aes(x = date, y = mean_tot_precip), size = 1.5) +
+  scale_y_continuous(limits = c(0, 250), breaks = seq(0, 250, by = 50)) +
+  scale_x_datetime(date_breaks = "month", date_labels = "%b %y", limits = c(as.POSIXct("2021-03-30"), as.POSIXct("2022-09-01"))) +
   ylab("Total precipitation (mm)") +
   xlab("Month") +
-  theme(text = element_text(size = 12), axis.text.x = element_text(angle = 45, hjust=1))
+  theme(text = element_text(size = 10), axis.text.x = element_text(angle = 45, hjust=1))
 dev.off()
+
+p.precip <- ggplot(fh.monthly) +
+  geom_col(aes(x = date, y = total.precip), fill = "#C1C1CC") +
+    geom_errorbar(data = fh.monthly.sum, aes(x = date, ymin = sd_min_monthly, ymax = sd_max_monthly), width = 0) +
+  geom_point(data = fh.monthly.sum, aes(x = date, y = mean_tot_precip), size = 1.5) +
+  scale_y_continuous(limits = c(0, 250), breaks = seq(0, 250, by = 50)) +
+  scale_x_datetime(date_breaks = "month", date_labels = "%b %y", limits = c(as.POSIXct("2021-03-30"), as.POSIXct("2022-09-01"))) +
+  ylab("Total precipitation (mm)") +
+  xlab("") +
+  theme(text = element_text(size = 10), axis.text.x = element_text(angle = 45, hjust=1)) +
+  theme(plot.margin = unit(c(0, 0, 0 , 0.55), "cm"))
 
 ## All time ##
 png(filename = "../Figures/Precip_Airport.png", width = 6.5, height = 4, res = 400, units = "in")
@@ -852,6 +1055,27 @@ dev.off()
 
 
 #### Combo plots
+
+Ulva, Precip, Salinity
+
+```{r}
+png(filename = "../Figures/Ulva_Precip_Sal_Temp.png", width = 4, height = 8.5, res = 400, units = "in")
+plot_grid(p.ulva, p.precip, p.sal, p.temp, nrow = 4, ncol = 1, labels = "auto", align = "v")
+dev.off()
+```
+
+nutrients
+```{r}
+png(filename = "../Figures/PO2_NO3_NO2_NH4.png", width = 4, height = 8.5, res = 400, units = "in")
+plot_grid(p.po4, p.no3, p.no2, p.nh4, nrow = 4, ncol = 1, labels = "auto", align = "v")
+dev.off()
+
+png(filename = "../Figures/TN_TP_1_2_3.png", width = 4, height = 5, res = 400, units = "in")
+plot_grid(p.tp, p.tn, nrow = 2, ncol = 1, labels = "auto", align = "v")
+dev.off()
+```
+
+
 ```{r}
 ## Nitrate and ulva mass ##
 p.no3 <- ggplot(dat %>% 
@@ -900,16 +1124,26 @@ dev.off()
 On the ground
 ```{r}
 ## Plots of Means ##
-png(filename = "../Figures/Ulva_mass.png", width = 4.5, height = 3, res = 400, units = "in")
+png(filename = "../Figures/Ulva_mass.png", width = 4.5, height = 4, res = 400, units = "in")
 ggplot(ul.sum) +
   geom_point(aes(x = date, y = mean_ul_mass_gmsq), size = 1.75) +
   geom_errorbar(aes(x = date, ymin = mean_ul_mass_gmsq - sd_ul_mass_gmsq, ymax = mean_ul_mass_gmsq + sd_ul_mass_gmsq), width = 0) +
   scale_y_continuous(limits = c(-30, 180), breaks = seq(-30, 180, by = 30))  +
-  scale_x_datetime(date_breaks = "month", date_labels = "%b %y", limits = c(as.POSIXct("2021-04-01"), as.POSIXct("2023-01-01"))) +
+  scale_x_datetime(date_breaks = "month", date_labels = "%b %y", limits = c(as.POSIXct("2021-04-15"), as.POSIXct("2022-09-01"))) +
   ylab("Ulva mass (g/msq)") +
   xlab("Month") +
-  theme(text = element_text(size = 12), axis.text.x = element_text(angle = 45, hjust=1))
+  theme(text = element_text(size = 10), axis.text.x = element_text(angle = 45, hjust=1))
 dev.off()
+
+p.ulva <- ggplot(ul.sum) +
+  geom_point(aes(x = date, y = mean_ul_mass_gmsq), size = 1.75) +
+  geom_errorbar(aes(x = date, ymin = mean_ul_mass_gmsq - sd_ul_mass_gmsq, ymax = mean_ul_mass_gmsq + sd_ul_mass_gmsq), width = 0) +
+  scale_y_continuous(limits = c(-30, 180), breaks = seq(-30, 180, by = 30))  +
+  scale_x_datetime(date_breaks = "month", date_labels = "%b %y", limits = c(as.POSIXct("2021-03-30"), as.POSIXct("2022-09-01"))) +
+  ylab("Ulva mass (g/msq)") +
+  xlab("") +
+  theme(text = element_text(size = 10), axis.text.x = element_text(angle = 45, hjust = 1)) +
+  theme(plot.margin = unit(c(0, 0, 0 , 0.55), "cm"))
 
 ## Box plot ##
 png(filename = "../Figures/Ulva_mass_box.png", width = 4.5, height = 3, res = 400, units = "in")
@@ -922,6 +1156,25 @@ ggplot(ul) +
   theme(text = element_text(size = 12), axis.text.x = element_text(angle = 45, hjust=1))
 dev.off()
 ```
+
+#### Correlations
+total N and P and nutrients between Bailer, creek mouth and nearshore
+ 
+```{r}
+test <- nuts %>% 
+  filter(station_id %in% c("FBWS_1", "FBWS_2", "FBWS_3")) %>% 
+  select(station_id, PO4_umol:TP_umol)
+
+cor.nuts <- data.frame(Nutrient = c("Total P", "Total N", "Ortho-phosphate", "Silicate", "Nitrate", "Nitrite", "Ammonium"), 
+                       one = c(cor(dat$TP_umol[dat$station_id == "FBWS_1"], dat$TP_umol[dat$station_id == "FBWS_2"]), cor(dat$TN_umol[dat$station_id == "FBWS_1"], dat$TN_umol[dat$station_id == "FBWS_2"]),cor(dat$PO4_umol[dat$station_id == "FBWS_1"], dat$PO4_umol[dat$station_id == "FBWS_2"]),cor(dat$SiOH4_umol[dat$station_id == "FBWS_1"], dat$SiOH4_umol[dat$station_id == "FBWS_2"]),cor(dat$NO3_umol[dat$station_id == "FBWS_1"], dat$NO3_umol[dat$station_id == "FBWS_2"]),cor(dat$NO2_umol[dat$station_id == "FBWS_1"], dat$NO2_umol[dat$station_id == "FBWS_2"]),cor(dat$NH4_umol[dat$station_id == "FBWS_1"], dat$NH4_umol[dat$station_id == "FBWS_2"])),
+                       two = c(cor(dat$TP_umol[dat$station_id == "FBWS_1"], dat$TP_umol[dat$station_id == "FBWS_3"]), cor(dat$TN_umol[dat$station_id == "FBWS_1"], dat$TN_umol[dat$station_id == "FBWS_3"]), rep("ND", 5)),
+                       three = c(cor(dat$TP_umol[dat$station_id == "FBWS_2"], dat$TP_umol[dat$station_id == "FBWS_3"]), cor(dat$TN_umol[dat$station_id == "FBWS_2"], dat$TN_umol[dat$station_id == "FBWS_3"]), rep("ND", 5))
+                       )
+
+colnames(cor.nuts) <- c("Nutrients", "Nearshore:Creek Mouth", "Nearshore:Bailer Hill", "Creek Mouth:Bailer Hill")
+
+```
+ 
 
 Drone
 ```{r}
