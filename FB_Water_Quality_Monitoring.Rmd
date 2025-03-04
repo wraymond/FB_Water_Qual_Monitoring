@@ -12,10 +12,8 @@ editor_options:
 ```{r echo=FALSE}
 library(tidyverse)
 library(ggplot2)
-library(rnoaa)
 library(lubridate)
 library(cowplot)
-library(noaaoceans)
 
 theme_set(theme_classic())
 options(noaakey = "tDzKKwcWqlZFAcwgjTanQIpnFLZvAAET")
@@ -344,9 +342,9 @@ ul.drone <- ul.drone %>%
 ```{r}
 p.temp <- ggplot(dat %>%
          filter(station_id %in% c("FBWS_1", "FBWS_2", "FBWS_3"))) +
-  geom_point(aes(x = sample_date, y = temp_c, shape = station_abb, color = station_abb), size = 1.5) +
+  geom_point(aes(x = sample_date, y = temp_c, shape = station_abb, color = station_abb), size = 1.6) +
   scale_shape_manual(values = c(15, 17, 16), labels = c("Bailer", "Mouth", "Nearshore")) +
-  scale_color_manual(values = c("#D41E58", "#678F22", "#14409E")) +
+  scale_color_manual(values = c("#E6003D", "#678F22", "#002575")) +
   labs(color = "Station") +
   theme(legend.position = "none") +
   scale_y_continuous(limits = c(0, 24), breaks = seq(0, 24, by = 4))  +
@@ -478,9 +476,9 @@ dev.off()
 
 p.sal <- ggplot(dat %>%
          filter(station_id %in% c("FBWS_1", "FBWS_2"))) +
-  geom_point(aes(x = sample_date, y = sal_ppt, shape = station_abb, color = station_abb), size = 1.5) +
+  geom_point(aes(x = sample_date, y = sal_ppt, shape = station_abb, color = station_abb), size = 1.6) +
   scale_shape_manual(values = c(17, 16), labels = c("Mouth", "Nearshore")) +
-  scale_color_manual(values = c( "#678F22", "#14409E")) +
+  scale_color_manual(values = c("#678F22", "#002575")) +
   labs(color = "Station") +
   theme(legend.position = "none") +
   scale_y_continuous(limits = c(0, 36), breaks = seq(0, 36, by = 4))  +
@@ -555,9 +553,9 @@ ann_text3 <- data.frame(sample_date = c(as.POSIXct("2022-08-16 00:00:00"), as.PO
 
 p.tp <- ggplot(dat %>%
          filter(station_id %in% c("FBWS_1", "FBWS_2", "FBWS_3"))) +
-  geom_point(aes(x = sample_date, y = TP_umol, shape = station_abb, color = station_abb), size = 1.5) +
+  geom_point(aes(x = sample_date, y = TP_umol, shape = station_abb, color = station_abb), size = 1.6) +
   scale_shape_manual(values = c(15, 17, 16), labels = c("Bailer", "Mouth", "Nearshore")) +
-  scale_color_manual(values = c("#D41E58", "#678F22", "#14409E")) +
+  scale_color_manual(values = c("#E6003D", "#678F22", "#002575")) +
   scale_y_continuous(limits = c(0, 20), breaks = seq(0, 20, by = 5)) +
   scale_x_datetime(date_breaks = "month", date_labels = "%b %y", limits = c(as.POSIXct("2021-03-30"), as.POSIXct("2022-09-01"))) +
   ylab("Total P (\u00b5mol)") +
@@ -646,9 +644,9 @@ ann_text4 <- data.frame(sample_date = c(as.POSIXct("2021-08-16 00:00:00"), as.PO
 
 p.tn <- ggplot(dat %>%
          filter(station_id %in% c("FBWS_1", "FBWS_2", "FBWS_3"))) +
-  geom_point(aes(x = sample_date, y = TN_umol, shape = station_abb, color = station_abb), size = 1.5) +
+  geom_point(aes(x = sample_date, y = TN_umol, shape = station_abb, color = station_abb), size = 1.6) +
   scale_shape_manual(values = c(15, 17, 16), labels = c("Bailer", "Mouth", "Nearshore")) +
-  scale_color_manual(values = c("#D41E58", "#678F22", "#14409E")) +
+  scale_color_manual(values = c("#E6003D", "#678F22", "#002575")) +
   scale_y_continuous(limits = c(0, 300), breaks = seq(0, 300, by = 50)) +
   scale_x_datetime(date_breaks = "month", date_labels = "%b %y", limits = c(as.POSIXct("2021-03-30"), as.POSIXct("2022-09-01"))) +
   ylab("Total N (\u00b5mol)") +
@@ -760,7 +758,7 @@ ggplot(dat %>%
   geom_point(aes(x = sample_date, y = PO4_umol), size = 1.75) +
   scale_y_continuous(limits = c(0, 4), breaks = seq(0, 4, by = 1)) +
   scale_x_datetime(date_breaks = "month", date_labels = "%b %y", limits = c(as.POSIXct("2021-04-01 00:00:00"), as.POSIXct("2022-12-01 00:00:00"))) +
-  ylab("Phosphate (\u00b5mol)") +
+  ylab("Orthophosphate (\u00b5mol)") +
   xlab("Sample month") +
   theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 8)) +
   theme(text = element_text(size = 12)) +
@@ -770,14 +768,14 @@ dev.off()
 
 p.po4 <- ggplot(dat %>% 
          filter(station_id %in% c("FBWS_1", "FBWS_2"))) +
-  geom_point(aes(x = sample_date, y = PO4_umol, shape = station_abb, color = station_abb), size = 1.5) +
+  geom_point(aes(x = sample_date, y = PO4_umol, shape = station_abb, color = station_abb), size = 1.6) +
   scale_shape_manual(values = c(17, 16), labels = c("Mouth", "Nearshore")) +
   labs(color = "Station") +
-  scale_color_manual(values = c( "#678F22", "#14409E")) +
+  scale_color_manual(values = c("#678F22", "#002575")) +
   theme(legend.position = "none") +
   scale_y_continuous(limits = c(0, 4), breaks = seq(0, 4, by = 1)) +
   scale_x_datetime(date_breaks = "month", date_labels = "%b %y", limits = c(as.POSIXct("2021-04-01 00:00:00"), as.POSIXct("2022-12-01 00:00:00"))) +
-  ylab("Phosphate (\u00b5mol)") +
+  ylab("Orthophosphate (\u00b5mol)") +
   xlab("") +
   theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
   theme(text = element_text(size = 10)) +
@@ -826,9 +824,9 @@ dev.off()
 
 p.no3 <- ggplot(dat %>% 
          filter(station_id %in% c("FBWS_1", "FBWS_2"))) +
-  geom_point(aes(x = sample_date, y = NO3_umol, shape = station_abb, color = station_abb), size = 1.5) +
+  geom_point(aes(x = sample_date, y = NO3_umol, shape = station_abb, color = station_abb), size = 1.6) +
   scale_shape_manual(values = c(17, 16), labels = c("Mouth", "Nearshore")) +
-  scale_color_manual(values = c( "#678F22", "#14409E")) +
+  scale_color_manual(values = c("#678F22", "#002575")) +
   labs(color = "Station") +
   theme(legend.position = "none") +
   scale_y_continuous(limits = c(0, 30), breaks = seq(0, 30, by = 5)) +
@@ -869,9 +867,9 @@ dev.off()
 
 p.no2 <- ggplot(dat %>% 
          filter(station_id %in% c("FBWS_1", "FBWS_2"))) +
-  geom_point(aes(x = sample_date, y = NO2_umol, shape = station_abb, color = station_abb), size = 1.5) +
+  geom_point(aes(x = sample_date, y = NO2_umol, shape = station_abb, color = station_abb), size = 1.6) +
   scale_shape_manual(values = c(17, 16), labels = c("Mouth", "Nearshore")) +
-  scale_color_manual(values = c( "#678F22", "#14409E")) +
+  scale_color_manual(values = c("#678F22", "#002575")) +
   labs(color = "Station") +
   theme(legend.position = "none") +
   scale_y_continuous(limits = c(0, 1.2), breaks = seq(0, 1.2, by = 0.2)) +
@@ -932,9 +930,9 @@ ann_text2 <- data.frame(sample_date = c(as.POSIXct("2021-08-16 00:00:00"), as.PO
 
 p.nh4 <- ggplot(dat %>% 
          filter(station_id %in% c("FBWS_1", "FBWS_2"))) +
-  geom_point(aes(x = sample_date, y = NH4_umol, shape = station_abb, color = station_abb), size = 1.5) +
+  geom_point(aes(x = sample_date, y = NH4_umol, shape = station_abb, color = station_abb), size = 1.6) +
   scale_shape_manual(values = c(17, 16), labels = c("Mouth", "Nearshore")) +
-  scale_color_manual(values = c( "#678F22", "#14409E")) +
+  scale_color_manual(values = c("#678F22", "#002575")) +
   labs(color = "Station") +
   theme(legend.position = "none") +
   scale_y_continuous(limits = c(0, 25), breaks = seq(0, 25, by = 5)) +
@@ -1136,7 +1134,7 @@ ggplot(ul.sum) +
 dev.off()
 
 p.ulva <- ggplot(ul.sum) +
-  geom_point(aes(x = date, y = mean_ul_mass_gmsq), size = 1.75) +
+  geom_point(aes(x = date, y = mean_ul_mass_gmsq), size = 1.6) +
   geom_errorbar(aes(x = date, ymin = mean_ul_mass_gmsq - sd_ul_mass_gmsq, ymax = mean_ul_mass_gmsq + sd_ul_mass_gmsq), width = 0) +
   scale_y_continuous(limits = c(-30, 180), breaks = seq(-30, 180, by = 30))  +
   scale_x_datetime(date_breaks = "month", date_labels = "%b %y", limits = c(as.POSIXct("2021-03-30"), as.POSIXct("2022-09-01"))) +
