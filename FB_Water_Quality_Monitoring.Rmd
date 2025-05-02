@@ -344,7 +344,7 @@ p.temp <- ggplot(dat %>%
          filter(station_id %in% c("FBWS_1", "FBWS_2", "FBWS_3"))) +
   geom_point(aes(x = sample_date, y = temp_c, shape = station_abb, color = station_abb), size = 1.6) +
   scale_shape_manual(values = c(15, 17, 16), labels = c("Bailer", "Mouth", "Nearshore")) +
-  scale_color_manual(values = c("#E6003D", "#678F22", "#002575")) +
+  scale_color_manual(values = c("#E6003D", "#678F22", "#000000")) +
   labs(color = "Station") +
   theme(legend.position = "none") +
   scale_y_continuous(limits = c(0, 24), breaks = seq(0, 24, by = 4))  +
@@ -428,17 +428,22 @@ dev.off()
 ##### Tidbits
 ```{r}
 ## Tidbit ##
-png(filename = "../Figures/Temp_Water_Tidbit.png", width = 6.5, height = 4.8, res = 400, units = "in")
-ggplot(tid.daily) +
+png(filename = "../Figures/Temp_Water_Tidbit_2_3.png", width = 6.5, height = 4.8, res = 400, units = "in")
+ggplot(tid.daily %>% 
+         filter(station_id %in% c("FBWS_2", "FBWS_3"))) +
   geom_line(aes(x = date_short, y = mean_temp), size = 0.5) +
-  geom_ribbon(aes(x = date_short, ymin = mean_temp - sd_temp, ymax = mean_temp + sd_temp), alpha = 0.4) +
-  scale_y_continuous(limits = c(-5, 33), breaks = seq(-5, 30, by = 5)) +
-  scale_x_datetime(date_breaks = "month", date_labels = "%b %y") +
+  geom_ribbon(aes(x = date_short, ymin = mean_temp - sd_temp, ymax = mean_temp + sd_temp), alpha = 0.25) +
+  geom_point(aes(x = sample_date, y = temp_c, shape = station_abb, color = station_abb), size = 2, data = dat %>% filter(station_id %in% c("FBWS_2", "FBWS_3"))) +
+  scale_y_continuous(limits = c(-5, 33), breaks = seq(-0, 30, by = 5)) +
+  scale_x_datetime(date_breaks = "month", date_labels = "%b %y", limits = c(as.POSIXct("2021-04-01"), as.POSIXct("2022-06-01"))) +
+  scale_shape_manual(values = c(15, 17), labels = c("Bailer", "Mouth", "Nearshore")) +
+  scale_color_manual(values = c("#E6003D", "#678F22")) +
   ylab("Temperature (°C)") +
   xlab("Date") +
   theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 8)) +
-  theme(text = element_text(size = 14)) +
-  facet_wrap(~ station_abb, nrow = 3, ncol = 2)
+  theme(text = element_text(size = 12)) +
+  theme(legend.position = "none") +
+  facet_wrap(~ station_abb, nrow = 2, ncol = 1)
 dev.off()
 ```
 
@@ -478,7 +483,7 @@ p.sal <- ggplot(dat %>%
          filter(station_id %in% c("FBWS_1", "FBWS_2"))) +
   geom_point(aes(x = sample_date, y = sal_ppt, shape = station_abb, color = station_abb), size = 1.6) +
   scale_shape_manual(values = c(17, 16), labels = c("Mouth", "Nearshore")) +
-  scale_color_manual(values = c("#678F22", "#002575")) +
+  scale_color_manual(values = c("#678F22", "#000000")) +
   labs(color = "Station") +
   theme(legend.position = "none") +
   scale_y_continuous(limits = c(0, 36), breaks = seq(0, 36, by = 4))  +
@@ -555,7 +560,7 @@ p.tp <- ggplot(dat %>%
          filter(station_id %in% c("FBWS_1", "FBWS_2", "FBWS_3"))) +
   geom_point(aes(x = sample_date, y = TP_umol, shape = station_abb, color = station_abb), size = 1.6) +
   scale_shape_manual(values = c(15, 17, 16), labels = c("Bailer", "Mouth", "Nearshore")) +
-  scale_color_manual(values = c("#E6003D", "#678F22", "#002575")) +
+  scale_color_manual(values = c("#E6003D", "#678F22", "#000000")) +
   scale_y_continuous(limits = c(0, 20), breaks = seq(0, 20, by = 5)) +
   scale_x_datetime(date_breaks = "month", date_labels = "%b %y", limits = c(as.POSIXct("2021-03-30"), as.POSIXct("2022-09-01"))) +
   ylab("Total P (\u00b5mol)") +
@@ -646,7 +651,7 @@ p.tn <- ggplot(dat %>%
          filter(station_id %in% c("FBWS_1", "FBWS_2", "FBWS_3"))) +
   geom_point(aes(x = sample_date, y = TN_umol, shape = station_abb, color = station_abb), size = 1.6) +
   scale_shape_manual(values = c(15, 17, 16), labels = c("Bailer", "Mouth", "Nearshore")) +
-  scale_color_manual(values = c("#E6003D", "#678F22", "#002575")) +
+  scale_color_manual(values = c("#E6003D", "#678F22", "#000000")) +
   scale_y_continuous(limits = c(0, 300), breaks = seq(0, 300, by = 50)) +
   scale_x_datetime(date_breaks = "month", date_labels = "%b %y", limits = c(as.POSIXct("2021-03-30"), as.POSIXct("2022-09-01"))) +
   ylab("Total N (\u00b5mol)") +
@@ -771,7 +776,7 @@ p.po4 <- ggplot(dat %>%
   geom_point(aes(x = sample_date, y = PO4_umol, shape = station_abb, color = station_abb), size = 1.6) +
   scale_shape_manual(values = c(17, 16), labels = c("Mouth", "Nearshore")) +
   labs(color = "Station") +
-  scale_color_manual(values = c("#678F22", "#002575")) +
+  scale_color_manual(values = c("#678F22", "#000000")) +
   theme(legend.position = "none") +
   scale_y_continuous(limits = c(0, 4), breaks = seq(0, 4, by = 1)) +
   scale_x_datetime(date_breaks = "month", date_labels = "%b %y", limits = c(as.POSIXct("2021-04-01 00:00:00"), as.POSIXct("2022-12-01 00:00:00"))) +
@@ -826,7 +831,7 @@ p.no3 <- ggplot(dat %>%
          filter(station_id %in% c("FBWS_1", "FBWS_2"))) +
   geom_point(aes(x = sample_date, y = NO3_umol, shape = station_abb, color = station_abb), size = 1.6) +
   scale_shape_manual(values = c(17, 16), labels = c("Mouth", "Nearshore")) +
-  scale_color_manual(values = c("#678F22", "#002575")) +
+  scale_color_manual(values = c("#678F22", "#000000")) +
   labs(color = "Station") +
   theme(legend.position = "none") +
   scale_y_continuous(limits = c(0, 30), breaks = seq(0, 30, by = 5)) +
@@ -869,7 +874,7 @@ p.no2 <- ggplot(dat %>%
          filter(station_id %in% c("FBWS_1", "FBWS_2"))) +
   geom_point(aes(x = sample_date, y = NO2_umol, shape = station_abb, color = station_abb), size = 1.6) +
   scale_shape_manual(values = c(17, 16), labels = c("Mouth", "Nearshore")) +
-  scale_color_manual(values = c("#678F22", "#002575")) +
+  scale_color_manual(values = c("#678F22", "#000000")) +
   labs(color = "Station") +
   theme(legend.position = "none") +
   scale_y_continuous(limits = c(0, 1.2), breaks = seq(0, 1.2, by = 0.2)) +
@@ -932,7 +937,7 @@ p.nh4 <- ggplot(dat %>%
          filter(station_id %in% c("FBWS_1", "FBWS_2"))) +
   geom_point(aes(x = sample_date, y = NH4_umol, shape = station_abb, color = station_abb), size = 1.6) +
   scale_shape_manual(values = c(17, 16), labels = c("Mouth", "Nearshore")) +
-  scale_color_manual(values = c("#678F22", "#002575")) +
+  scale_color_manual(values = c("#678F22", "#000000")) +
   labs(color = "Station") +
   theme(legend.position = "none") +
   scale_y_continuous(limits = c(0, 25), breaks = seq(0, 25, by = 5)) +
