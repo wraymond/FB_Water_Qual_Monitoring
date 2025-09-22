@@ -26,6 +26,8 @@ Load raw water quality and nutrient data
 qual <- read.csv("../Data/FBWS_water_quality_monitoring.csv", header = TRUE, stringsAsFactors = FALSE)
 
 nuts <- read.csv("../Data/FBWS_water_nutrients.csv", header = TRUE, stringsAsFactors = FALSE)
+
+iso <- read.csv("../Data/FBWS_isotope_simp.csv", header = TRUE, stringsAsFactors = FALSE)
 ```
 
 ##### Data management
@@ -34,6 +36,7 @@ Define data data as POSIXct data
 ```{r echo=FALSE}
 qual$sample_date <- as.POSIXct(qual$sample_date, format = "%m/%d/%Y")
 nuts$sample_date <- as.POSIXct(nuts$sample_date, format = "%m/%d/%Y")
+iso$sample_date <- as.POSIXct(iso$sample_date, format = "%m/%d/%Y")
 ```
 
 Combine nutrient with TN and TP data for a given date and station. Bring along/keep stations where only TNP are collected.
@@ -1222,5 +1225,33 @@ ul.nut <- left_join(nut.redu, ul.redu, by = date.mo)
 
 ggplot(ul.nut) +
   geom_point(aes(x = NO2_umol, y = mean_ul_mass_gmsq))
+```
+
+#### Isotopes
+
+```{r}
+iso <- iso %>% 
+  filter(sample_id != "B_137") %>%
+  mutate(mass_per_C = (C_ug / 1000) / CN_sample_mg * 100,
+         mass_per_N = (N_ug / 1000) / CN_sample_mg * 100,
+         mass_per_O = (O_ug / 1000) / O_sample_mg * 100)
+
+iso_sum <- iso %>% 
+  filter(sample_id != "B_137") %>% 
+  group_by(sample_date) %>% 
+  summarise(mean_delC = mean(del_C),
+            sd_delC = sd(del_C),
+            mean_delN = mean(del_N),
+            sd_delN = sd(del_N),
+            mean_delO = mean(del_O),
+            sd_delO = sd(del_O),
+            mean_per_C = mean(mass_per_C),
+            sd_per_C = sd(mass_per_C),
+            mean_per_N = mean(mass_per_N),
+            sd_per_N = sd(mass_per_N),
+            mean_per_O = mean(mass_per_O),
+            sd_per_O = sd(mass_per_O))
+
+iso$C_ug / iso$N_ug
 ```
 
