@@ -1231,13 +1231,19 @@ ggplot(ul.nut) +
 
 ```{r}
 iso <- iso %>% 
-  filter(sample_id != "B_137") %>%
   mutate(mass_per_C = (C_ug / 1000) / CN_sample_mg * 100,
          mass_per_N = (N_ug / 1000) / CN_sample_mg * 100,
          mass_per_O = (O_ug / 1000) / O_sample_mg * 100)
 
+t.test(iso$del_N[iso$sample_date == "11/26/2021"], iso$del_N[iso$sample_date == "5/25/2022"])
+
+t.test(iso$del_O[iso$sample_date == "11/26/2021"], iso$del_O[iso$sample_date == "5/25/2022"])
+
+t.test(iso$mass_per_N[iso$sample_date == "11/26/2021"], iso$mass_per_N[iso$sample_date == "5/25/2022"])
+
+t.test(iso$mass_per_O[iso$sample_date == "11/26/2021"], iso$mass_per_O[iso$sample_date == "5/25/2022"])
+
 iso_sum <- iso %>% 
-  filter(sample_id != "B_137") %>% 
   group_by(sample_date) %>% 
   summarise(mean_delC = mean(del_C),
             sd_delC = sd(del_C),
